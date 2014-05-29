@@ -144,42 +144,27 @@ public class CassandraDbCqlConnector
     }
 
     /**
-     * Custom message processor named my-processor
-     *
-     * {@sample.xml ../../../doc/CassandraDbCql-connector.xml.sample cassandradbcql:my-processor}
-     *
-     * @param content Content to be processed
-     * @return Some string
-     */
-    @Processor
-    public String myProcessor(String content)
-    {
-        /*
-         * MESSAGE PROCESSOR CODE GOES HERE
-         */
-
-        return content;
-    }
-    
-    /**
      * Execute any CQL statement
      * 
      * {@sample.xml ../../../doc/CassandraDbCql-connector.xml.sample cassandradbcql:execute-cql}
      * 
-     * @param cql
-     * @param event
-     * @return
+     * @param cql The CQL statement to execute
+     * @param event The current Mule Event
+     * @return List of Maps with results, each map represents a row, each entry in the map represents a column
      */
     @Processor
     @Inject
     public List<Map<String,Object>> executeCql(String cql, List<String> params, @Default(value="false") boolean bulkMode, MuleEvent event){
     	
+    	//get mule context and expression manager
+    	//TODO: these should  be automatically injected using @Inject
     	MuleContext context = event.getMuleContext();
     	ExpressionManager expressionManager = context.getExpressionManager();
     	
 		List<Object> evaluatedParameters = new ArrayList<Object>();
 		int batchSize = 1;
 		
+		//if not in bulk mode, evaluate the expression for each parameter
 		if (!bulkMode)
 		{
 			for(String expression : params){
@@ -187,8 +172,8 @@ public class CassandraDbCqlConnector
 				evaluatedParameters.add(expressionManager.evaluate(expression, event));
 			}
 		}
+		//if in bulk mode, evaluate the expression for each item in the list payload
 		else{
-			
 			@SuppressWarnings("unchecked")
 			List<Object> listPayload = (List<Object>) event.getMessage().getPayload();
 			batchSize = listPayload.size();
@@ -201,7 +186,10 @@ public class CassandraDbCqlConnector
 			}
 		}
 		
+		//execute the statement using the evaluated parameters
 		List<Row> result = cassandraExecuteStatement(cql, evaluatedParameters, batchSize);
+		
+		//convert result to list of maps and return
 		return CassandraDbCqlUtils.toMaps(result);
 	}
     
@@ -209,27 +197,49 @@ public class CassandraDbCqlConnector
 
 		logger.debug("Executing statement: " + cql);
 
+		//get session and prepared statement
 		Session session = getSession();
 		PreparedStatement statement = getPreparedStatement(cql, batchSize, session);
 
+		//bind the parameters
 		BoundStatement boundStatement = new BoundStatement(statement);
 		boundStatement = boundStatement.bind(parameters.toArray());
+		
+		//execute statement
 		ResultSet resultSet = session.execute(boundStatement);
 
+		//read all results
 		List<Row> rowList = resultSet.all();
 		
+		//close session and return
 		session.close();
 		return rowList;
 	}
 	
+	/**
+	 * Get Cassandra session
+	 * 
+	 * @return Cassandra Session
+	 */
 	protected Session getSession(){
+		
+		//if keyspace is not set, get a general session
 		if (StringUtils.isBlank(keyspace)){
 			return cluster.connect();
 		}
 		
+		//if keyspace is set, get a session for that keyspace
 		return cluster.connect(keyspace);
 	}
     
+	/**
+	 * Get a prepared statement from the cache if possible, if not, create it and put in cache
+	 * 
+	 * @param cql
+	 * @param batchSize
+	 * @param session
+	 * @return
+	 */
     protected PreparedStatement getPreparedStatement(String cql, int batchSize, Session session){
 		
     	PreparedStatementKey key = new PreparedStatementKey(cql, batchSize);
@@ -244,6 +254,13 @@ public class CassandraDbCqlConnector
 		return statement;
 	}
     
+    /**
+     * Make string CQL depending on the batch size
+     * 
+     * @param cql
+     * @param batchSize
+     * @return
+     */
     protected String makeStatment(String cql, int batchSize){
     	if (batchSize == 1){
     		return cql;
@@ -265,42 +282,82 @@ public class CassandraDbCqlConnector
 		return "BEGIN BATCH " + batchCql.toString() + "APPLY BATCH";
     }
 
+    /**
+     * 
+     * @return
+     */
 	public String getHost() {
 		return host;
 	}
 
+	/**
+	 * 
+	 * @param host
+	 */
 	public void setHost(String host) {
 		this.host = host;
 	}
 
+	/**
+	 * 
+	 * @return
+	 */
 	public Integer getPort() {
 		return port;
 	}
 
+	/**
+	 * 
+	 * @param port
+	 */
 	public void setPort(Integer port) {
 		this.port = port;
 	}
 
+	/**
+	 * 
+	 * @return
+	 */
 	public String getKeyspace() {
 		return keyspace;
 	}
 
+	/**
+	 * 
+	 * @param keyspace
+	 */
 	public void setKeyspace(String keyspace) {
 		this.keyspace = keyspace;
 	}
 
+	/**
+	 * 
+	 * @return
+	 */
 	public Cluster getCluster() {
 		return cluster;
 	}
 
+	/**
+	 * 
+	 * @param cluster
+	 */
 	public void setCluster(Cluster cluster) {
 		this.cluster = cluster;
 	}
 
+	/**
+	 * 
+	 * @param expressionManager
+	 */
 	public void setExpressionManager(ExpressionManager expressionManager) {
 		this.expressionManager = expressionManager;
 	}
 
+	/**
+	 * 
+	 * @param context
+	 */
 	public void setContext(MuleContext context) {
 		this.context = context;
 	}
