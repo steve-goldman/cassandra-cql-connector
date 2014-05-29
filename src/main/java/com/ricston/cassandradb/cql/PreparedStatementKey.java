@@ -16,6 +16,12 @@ public class PreparedStatementKey {
 	private String cql;
 	private Integer batchSize;
 
+	/**
+	 * Prepared Statement Key needs cql and batch size
+	 * 
+	 * @param cql
+	 * @param batchSize
+	 */
 	public PreparedStatementKey(String cql, Integer batchSize) {
 
 		if (cql == null) {
@@ -30,6 +36,9 @@ public class PreparedStatementKey {
 		this.batchSize = batchSize;
 	}
 
+	/**
+	 * Override equals which returns true if cql and batch size are the same
+	 */
 	@Override
 	public boolean equals(Object arg) {
 
@@ -37,6 +46,14 @@ public class PreparedStatementKey {
 
 		return this.batchSize.equals(preparedStatementKey.getBatchSize())
 				&& StringUtils.equals(this.cql, preparedStatementKey.getCql());
+	}
+	
+	/**
+	 * Override hashCode which depends on cql and batch size
+	 */
+	@Override
+	public int hashCode() {
+		return (cql.hashCode() / 2) * (batchSize.hashCode() / 2);
 	}
 
 	public String getCql() {
