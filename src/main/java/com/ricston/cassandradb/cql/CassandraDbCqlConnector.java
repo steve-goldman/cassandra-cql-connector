@@ -19,6 +19,8 @@ import javax.inject.Inject;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.mule.DefaultMuleEvent;
+import org.mule.DefaultMuleMessage;
 import org.mule.api.ConnectionException;
 import org.mule.api.MuleContext;
 import org.mule.api.MuleEvent;
@@ -172,22 +174,43 @@ public class CassandraDbCqlConnector
     @Inject
     public List<Map<String,Object>> executeCql(String cql, List<String> params, @Default(value="false") boolean bulkMode, MuleEvent event){
     	
-    	ExpressionManager expressionManager = event.getMuleContext().getExpressionManager();
+    	MuleContext context = event.getMuleContext();
+    	ExpressionManager expressionManager = context.getExpressionManager();
     	
 		List<Object> evaluatedParameters = new ArrayList<Object>();
+		int batchSize = 1;
 		
-		for(String expression : params){
-			logger.debug("Evaluating: " + expression);
-			evaluatedParameters.add(expressionManager.evaluate(expression, event));
+		if (!bulkMode)
+		{
+			for(String expression : params){
+				logger.debug("Evaluating: " + expression);
+				evaluatedParameters.add(expressionManager.evaluate(expression, event));
+			}
+		}
+		else{
+			
+			@SuppressWarnings("unchecked")
+			List<Object> listPayload = (List<Object>) event.getMessage().getPayload();
+			batchSize = listPayload.size();
+			
+			for(Object payload : listPayload){
+				for(String expression : params){
+					logger.debug("Evaluating: " + expression);
+					evaluatedParameters.add(expressionManager.evaluate(expression, new DefaultMuleEvent(new DefaultMuleMessage(payload, context), event)));
+				}
+			}
 		}
 		
-		List<Row> result = cassandraExecuteStatement(cql, evaluatedParameters);
+		List<Row> result = cassandraExecuteStatement(cql, evaluatedParameters, batchSize);
 		return CassandraDbCqlUtils.toMaps(result);
 	}
     
-    public List<Row> cassandraExecuteStatement(String cql, List<Object> parameters) {
+	public List<Row> cassandraExecuteStatement(String cql, List<Object> parameters, int batchSize) {
+
+		logger.debug("Executing statement: " + cql);
+
 		Session session = getSession();
-		PreparedStatement statement = getPreparedStatement(cql, 1, session);
+		PreparedStatement statement = getPreparedStatement(cql, batchSize, session);
 
 		BoundStatement boundStatement = new BoundStatement(statement);
 		boundStatement = boundStatement.bind(parameters.toArray());
@@ -197,32 +220,6 @@ public class CassandraDbCqlConnector
 		
 		session.close();
 		return rowList;
-	}
-
-	public List<Row> cassandraExecuteBatch(String cql, List<List<Object>> parameters) {
-
-		logger.info("Executing batch: " + cql);
-
-		// add ';' at the end of the statement if not present
-		cql = StringUtils.trim(cql);
-		if (!StringUtils.endsWith(cql, "; ")) {
-			cql += ";";
-		}
-
-		// repeat the statement for the number of batches we need to execute
-		StringBuilder batchCql = new StringBuilder();
-		for (int i = 0; i < parameters.size(); i++) {
-			batchCql.append(cql);
-		}
-
-		// flatten the parameters into one list
-		List<Object> flattenedParameters = new ArrayList<Object>();
-		for (List<Object> params : parameters) {
-			flattenedParameters.addAll(params);
-		}
-
-		return cassandraExecuteStatement("BEGIN BATCH " + batchCql.toString() + "APPLY BATCH",
-				flattenedParameters);
 	}
 	
 	protected Session getSession(){
@@ -235,11 +232,12 @@ public class CassandraDbCqlConnector
     
     protected PreparedStatement getPreparedStatement(String cql, int batchSize, Session session){
 		
-    	PreparedStatementKey key = new PreparedStatementKey(batchSize, cql);
+    	PreparedStatementKey key = new PreparedStatementKey(cql, batchSize);
 		PreparedStatement statement = preparedStatements.get(key);
 		
 		if (statement == null){
-			statement = session.prepare(cql);
+			String fullCql = makeStatment(cql, batchSize);
+			statement = session.prepare(fullCql);
 			preparedStatements.put(key, statement);
 		}
 		

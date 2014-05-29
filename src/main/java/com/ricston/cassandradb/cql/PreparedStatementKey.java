@@ -3,20 +3,22 @@ package com.ricston.cassandradb.cql;
 import org.mule.util.StringUtils;
 
 public class PreparedStatementKey {
-	private Integer batchSize;
+	
 	private String cql;
+	private Integer batchSize;
 
-	public PreparedStatementKey(Integer batchSize, String cql) {
+	public PreparedStatementKey(String cql, Integer batchSize) {
 
-		if (batchSize == null) {
-			throw new IllegalArgumentException("batchSize cannot be null");
-		}
 		if (cql == null) {
 			throw new IllegalArgumentException("cql cannot be null");
 		}
-
-		this.batchSize = batchSize;
+		
+		if (batchSize == null) {
+			throw new IllegalArgumentException("batchSize cannot be null");
+		}
+		
 		this.cql = cql;
+		this.batchSize = batchSize;
 	}
 
 	@Override
@@ -28,20 +30,11 @@ public class PreparedStatementKey {
 				&& StringUtils.equals(this.cql, preparedStatementKey.getCql());
 	}
 
-	public Integer getBatchSize() {
-		return batchSize;
-	}
-
-	public void setBatchSize(Integer batchSize) {
-		this.batchSize = batchSize;
-	}
-
 	public String getCql() {
 		return cql;
 	}
 
-	public void setCql(String cql) {
-		this.cql = cql;
+	public Integer getBatchSize() {
+		return batchSize;
 	}
-
 }
