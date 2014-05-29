@@ -25,6 +25,11 @@ import com.datastax.driver.core.Row;
 
 public class CassandraDbCqlUtils {
 	
+	/**
+	 * Log some Cassandra Cluster information
+	 * 
+	 * @param cluster
+	 */
 	public static void logClusterInformation(Cluster cluster){
     	Metadata metadata = cluster.getMetadata();
 		
@@ -35,21 +40,31 @@ public class CassandraDbCqlUtils {
 		}
     }
 	
+	/**
+	 * Convert a list of Cassandra Rows to a list of maps
+	 * 
+	 * @param rows
+	 * @return
+	 */
 	public static List<Map<String, Object>> toMaps(List<Row> rows){
 		List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
 		
+		//if rows is empty, return empty list
 		if (rows == null || rows.size() == 0){
 			return result;
 		}
 		
+		//get the column definitions from the first row
 		Row firstRow = rows.get(0);
 		ColumnDefinitions columDefinitions = firstRow.getColumnDefinitions();
 		
+		//for each row, create a map and add it to the result list
 		for (Row row : rows)
 		{
 			Map<String, Object> mapRow = new HashMap<String, Object>();
 			result.add(mapRow);
 			
+			//for each column defintion, get name and value, and add to map
 			for (Iterator<ColumnDefinitions.Definition> i = columDefinitions.iterator(); i.hasNext();){
 				ColumnDefinitions.Definition def = i.next();
 				
