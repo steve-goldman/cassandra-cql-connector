@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:cassandradbcql="http://www.mulesoft.org/schema/mule/cassandradbcql"
+      xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/cassandradbcql http://www.mulesoft.org/schema/mule/cassandradbcql/1.0-SNAPSHOT/mule-cassandradbcql.xsd">
+
+    <cassandradbcql:config username="root" host="localhost" keyspace="minely"/>
+
+    <flow name="testFlow">
+    	<logger level="INFO" message="#[message.payload]"/>
+        <cassandradbcql:execute-cql cql="Select * from vatrates where id = ?" bulkMode="false">
+        	<cassandradbcql:params>
+        		<cassandradbcql:param>payload['id']</cassandradbcql:param>
+        	</cassandradbcql:params>
+        </cassandradbcql:execute-cql>
+        <logger level="INFO" message="#[message.payload]"/>
+    </flow>
+
+</mule>

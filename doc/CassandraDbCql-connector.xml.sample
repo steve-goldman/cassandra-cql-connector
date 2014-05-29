@@ -1,0 +1,8 @@
+<!-- BEGIN_INCLUDE(cassandradbcql:my-processor) -->
+    <cassandradbcql:my-processor content="#[map-payload:content]" />
+<!-- END_INCLUDE(cassandradbcql:my-processor) -->
+<!-- BEGIN_INCLUDE(cassandradbcql:execute-cql) -->
+    <cassandradbcql:execute-cql>
+    	<cassandradbcql:query cql="Select * from clients where id = #[payload]" bulkMode="false" />
+    </cassandradbcql:execute-cql>
+<!-- END_INCLUDE(cassandradbcql:execute-cql) -->
