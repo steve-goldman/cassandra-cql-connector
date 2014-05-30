@@ -8,15 +8,18 @@
         http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
         http://www.mulesoft.org/schema/mule/cassandradbcql http://www.mulesoft.org/schema/mule/cassandradbcql/1.0-SNAPSHOT/mule-cassandradbcql.xsd">
 
-    <cassandradbcql:config username="root" host="localhost" keyspace="minely"/>
+    <cassandradbcql:config username="root" host="localhost" keyspace="minely">
+    	<cassandradbcql:local-pooling-options coreConnectionsPerHost="5" maxConnectionsPerHost="15" minSimultaneousRequestsPerConnectionThreshold="50" maxSimultaneousRequestsPerConnectionThreshold="150" />
+    	<cassandradbcql:remote-pooling-options coreConnectionsPerHost="2" maxConnectionsPerHost="15" minSimultaneousRequestsPerConnectionThreshold="10" maxSimultaneousRequestsPerConnectionThreshold="50" />
+    </cassandradbcql:config>
 
     <flow name="testFlow">
     	<logger level="INFO" message="#[message.payload]"/>
-        <cassandradbcql:execute-cql cql="Select * from vatrates where id = ?" bulkMode="false">
+        <cassandradbcql:select cql="Select * from vatrates where id = ?">
         	<cassandradbcql:params>
-        		<cassandradbcql:param>payload['id']</cassandradbcql:param>
+        		<cassandradbcql:param>java.util.UUID.fromString(payload['id'])</cassandradbcql:param>
         	</cassandradbcql:params>
-        </cassandradbcql:execute-cql>
+        </cassandradbcql:select>
         <logger level="INFO" message="#[message.payload]"/>
     </flow>
 

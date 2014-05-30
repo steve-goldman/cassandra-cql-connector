@@ -20,7 +20,9 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.DataType;
 import com.datastax.driver.core.Host;
+import com.datastax.driver.core.HostDistance;
 import com.datastax.driver.core.Metadata;
+import com.datastax.driver.core.PoolingOptions;
 import com.datastax.driver.core.Row;
 
 /**
@@ -28,63 +30,102 @@ import com.datastax.driver.core.Row;
  * Utilities class for Cassandra CQL
  * 
  * @author Alan Cassar, Ricston Ltd.
- *
+ * 
  */
 public class CassandraDbCqlUtils {
-	
+
 	/**
 	 * Log some Cassandra Cluster information
 	 * 
 	 * @param cluster
 	 */
-	public static void logClusterInformation(Cluster cluster){
-    	Metadata metadata = cluster.getMetadata();
-		
-    	CassandraDbCqlConnector.logger.info(String.format("Connected to cluster: %s\n", metadata.getClusterName()));
+	public static void logClusterInformation(Cluster cluster) {
+		Metadata metadata = cluster.getMetadata();
+
+		CassandraDbCqlConnector.logger.info(String.format(
+				"Connected to cluster: %s", metadata.getClusterName()));
 		for (Host host : metadata.getAllHosts()) {
-			CassandraDbCqlConnector.logger.info(String.format("Datacenter: %s; Host: %s; Port:%d Rack: %s\n",
-					host.getDatacenter(), host.getAddress(), host.getSocketAddress().getPort(), host.getRack()));
+			CassandraDbCqlConnector.logger.info(String.format(
+					"Datacenter: %s; Host: %s; Port:%d Rack: %s", host
+							.getDatacenter(), host.getAddress(), host
+							.getSocketAddress().getPort(), host.getRack()));
 		}
-    }
-	
+
+		PoolingOptions poolingOptions = cluster.getConfiguration()
+				.getPoolingOptions();
+
+		CassandraDbCqlConnector.logger
+				.info(String
+						.format("Local core connections: %d, Local max connections %d, Local min simultaneous requests per connection: %d, Local max simultaneous requests per connection: %d",
+								poolingOptions
+										.getCoreConnectionsPerHost(HostDistance.LOCAL),
+								poolingOptions
+										.getMaxConnectionsPerHost(HostDistance.LOCAL),
+								poolingOptions
+										.getMinSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL),
+								poolingOptions
+										.getMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL)));
+
+		CassandraDbCqlConnector.logger
+				.info(String
+						.format("Remote core connections: %d, Remote max connections %d, Remote min simultaneous requests per connection: %d, Remote max simultaneous requests per connection: %d",
+								poolingOptions
+										.getCoreConnectionsPerHost(HostDistance.REMOTE),
+								poolingOptions
+										.getMaxConnectionsPerHost(HostDistance.REMOTE),
+								poolingOptions
+										.getMinSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE),
+								poolingOptions
+										.getMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE)));
+
+	}
+
 	/**
 	 * Convert a list of Cassandra Rows to a list of maps
 	 * 
 	 * @param rows
 	 * @return
 	 */
-	public static List<Map<String, Object>> toMaps(List<Row> rows){
+	public static List<Map<String, Object>> toMaps(List<Row> rows) {
 		List<Map<String, Object>> result = new ArrayList<Map<String, Object>>();
-		
-		//if rows is empty, return empty list
-		if (rows == null || rows.size() == 0){
+
+		// if rows is empty, return empty list
+		if (rows == null || rows.size() == 0) {
 			return result;
 		}
-		
-		//get the column definitions from the first row
+
+		// get the column definitions from the first row
 		Row firstRow = rows.get(0);
 		ColumnDefinitions columDefinitions = firstRow.getColumnDefinitions();
-		
-		//for each row, create a map and add it to the result list
-		for (Row row : rows)
-		{
+
+		// for each row, create a map and add it to the result list
+		for (Row row : rows) {
 			Map<String, Object> mapRow = new HashMap<String, Object>();
 			result.add(mapRow);
-			
-			//for each column defintion, get name and value, and add to map
-			for (Iterator<ColumnDefinitions.Definition> i = columDefinitions.iterator(); i.hasNext();){
+
+			// for each column defintion, get name and value, and add to map
+			for (Iterator<ColumnDefinitions.Definition> i = columDefinitions
+					.iterator(); i.hasNext();) {
 				ColumnDefinitions.Definition def = i.next();
-				
+
 				String name = def.getName();
 				DataType type = def.getType();
 				ByteBuffer bytes = row.getBytesUnsafe(name);
 				Object javaObject = type.deserialize(bytes);
-				
+
 				mapRow.put(name, javaObject);
 			}
 		}
-		
+
 		return result;
+	}
+	
+	public static <T> T defaultIfNull(T element, T defaultValue){
+		if (element != null){
+			return element;
+		}
+		
+		return defaultValue;
 	}
 
 }

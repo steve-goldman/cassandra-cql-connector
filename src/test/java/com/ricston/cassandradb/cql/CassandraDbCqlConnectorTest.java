@@ -29,7 +29,7 @@ public class CassandraDbCqlConnectorTest extends FunctionalTestCase
     public void testFlow() throws Exception
     {
     	Map<String, Object> payload = new HashMap<String, Object>();
-    	payload.put("id", UUID.fromString("f3d61f0a-95a9-4e24-a7cb-41ee19bf2355"));
+    	payload.put("id", "65b09341-cfc5-4ec6-a778-b6b5eabc61fd");
     	payload.put("name", "name surname");
     	
     	runFlow("testFlow", payload);
