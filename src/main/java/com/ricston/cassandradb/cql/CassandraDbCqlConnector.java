@@ -136,8 +136,7 @@ public class CassandraDbCqlConnector {
     		builder = builder.withAuthProvider(authProvider);
     	}
     	
-    	
-    	
+    	//set local pooling options
 		if (localPoolingOptions != null) {
 			
 			poolingOptions.setCoreConnectionsPerHost(HostDistance.LOCAL,
@@ -161,6 +160,7 @@ public class CassandraDbCqlConnector {
 							.getMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL)));
 		}
 		
+		//set remote pooling options
 		if (remotePoolingOptions != null) {
 			
 			poolingOptions.setCoreConnectionsPerHost(HostDistance.REMOTE,
@@ -184,6 +184,7 @@ public class CassandraDbCqlConnector {
 							.getMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE)));
 		}
     	
+		//build cluster and log information
 		cluster = builder.build();
 		CassandraDbCqlUtils.logClusterInformation(cluster);
     }
