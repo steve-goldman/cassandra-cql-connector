@@ -11,8 +11,15 @@ package com.ricston.cassandradb.cql;
 
 import org.mule.util.StringUtils;
 
+/**
+ * Simple class used as key for prepared statements. It uses 2 things to key the
+ * prepared statements, the CQL itself, and the size of the batch.
+ * 
+ * @author Alan Cassar, Ricston Ltd.
+ * 
+ */
 public class PreparedStatementKey {
-	
+
 	private String cql;
 	private Integer batchSize;
 
@@ -27,11 +34,11 @@ public class PreparedStatementKey {
 		if (cql == null) {
 			throw new IllegalArgumentException("cql cannot be null");
 		}
-		
+
 		if (batchSize == null) {
 			throw new IllegalArgumentException("batchSize cannot be null");
 		}
-		
+
 		this.cql = cql;
 		this.batchSize = batchSize;
 	}
@@ -47,7 +54,7 @@ public class PreparedStatementKey {
 		return this.batchSize.equals(preparedStatementKey.getBatchSize())
 				&& StringUtils.equals(this.cql, preparedStatementKey.getCql());
 	}
-	
+
 	/**
 	 * Override hashCode which depends on cql and batch size
 	 */

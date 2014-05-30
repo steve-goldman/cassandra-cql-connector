@@ -23,6 +23,13 @@ import com.datastax.driver.core.Host;
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.Row;
 
+/**
+ * 
+ * Utilities class for Cassandra CQL
+ * 
+ * @author Alan Cassar, Ricston Ltd.
+ *
+ */
 public class CassandraDbCqlUtils {
 	
 	/**

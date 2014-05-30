@@ -1,7 +1,16 @@
-<!-- BEGIN_INCLUDE(cassandradbcql:execute-cql) -->
-	<cassandradbcql:execute-cql cql="Select * from persons where id = ?" bulkMode="false">
+<!-- BEGIN_INCLUDE(cassandradbcql:select) -->
+	<cassandradbcql:select cql="SELECT * FROM persons WHERE id = ?">
     	<cassandradbcql:params>
     		<cassandradbcql:param>payload['id']</cassandradbcql:param>
     	</cassandradbcql:params>
-    </cassandradbcql:execute-cql>
-<!-- END_INCLUDE(cassandradbcql:execute-cql) -->
+    </cassandradbcql:select>
+<!-- END_INCLUDE(cassandradbcql:select) -->
+<!-- BEGIN_INCLUDE(cassandradbcql:update) -->
+	<cassandradbcql:update cql="INSERT INTO persons (id, name, age) VALUES (?, ?, ?)" bulkMode="false">
+    	<cassandradbcql:params>
+    		<cassandradbcql:param>payload['id']</cassandradbcql:param>
+    		<cassandradbcql:param>payload['name']</cassandradbcql:param>
+    		<cassandradbcql:param>payload['age']</cassandradbcql:param>
+    	</cassandradbcql:params>
+    </cassandradbcql:update>
+<!-- END_INCLUDE(cassandradbcql:update) -->

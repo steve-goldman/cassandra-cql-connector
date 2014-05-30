@@ -26,6 +26,7 @@ import org.mule.api.MuleContext;
 import org.mule.api.MuleEvent;
 import org.mule.api.annotations.Configurable;
 import org.mule.api.annotations.Connect;
+import org.mule.api.annotations.ConnectStrategy;
 import org.mule.api.annotations.ConnectionIdentifier;
 import org.mule.api.annotations.Connector;
 import org.mule.api.annotations.Disconnect;
@@ -50,7 +51,7 @@ import com.datastax.driver.core.Session;
 /**
  * Cassandra CQL Connector
  *
- * @author MuleSoft, Inc.
+ * @author Alan Cassar, Ricston Ltd.
  */
 @Connector(name="cassandradbcql", schemaVersion="1.0-SNAPSHOT", friendlyName="cassandradbcql")
 public class CassandraDbCqlConnector
@@ -101,7 +102,7 @@ public class CassandraDbCqlConnector
      * @param password A password
      * @throws ConnectionException
      */
-    @Connect
+    @Connect(strategy=ConnectStrategy.SINGLE_INSTANCE)
     public void connect(@ConnectionKey String username, @Password @Optional String password)
         throws ConnectionException {
     	
@@ -142,19 +143,50 @@ public class CassandraDbCqlConnector
     public String connectionId() {
         return "na";
     }
-
+    
     /**
-     * Execute any CQL statement
+     * Performs an update statement on Cassandra, this might be INSERT, UPDATE ...
+     * Bulk mode is supported
      * 
-     * {@sample.xml ../../../doc/CassandraDbCql-connector.xml.sample cassandradbcql:execute-cql}
+     * {@sample.xml ../../../doc/CassandraDbCql-connector.xml.sample cassandradbcql:update}
      * 
      * @param cql The CQL statement to execute
+     * @param params The Mule parameters, can be expressions without the #[]
+     * @param bulkMode Marks if we need to execute a batch, or a single statement
+     * @param event The current Mule Event
+     */
+    @Processor
+    @Inject
+    public void update(String cql, List<String> params, @Default(value="false") boolean bulkMode, MuleEvent event){
+    	cassandraDoExecute(cql, params, bulkMode, event);
+    }
+    
+    /**
+     * Performs a select statement on Cassandra
+     * 
+     * {@sample.xml ../../../doc/CassandraDbCql-connector.xml.sample cassandradbcql:select}
+     * 
+     * @param cql The CQL statement to execute
+     * @param params The Mule parameters, can be expressions without the #[]
      * @param event The current Mule Event
      * @return List of Maps with results, each map represents a row, each entry in the map represents a column
      */
     @Processor
     @Inject
-    public List<Map<String,Object>> executeCql(String cql, List<String> params, @Default(value="false") boolean bulkMode, MuleEvent event){
+    public List<Map<String,Object>> select(String cql, List<String> params, MuleEvent event){
+    	return cassandraDoExecute(cql, params, false, event);
+    }
+    
+    /**
+     * Evaluates the parameter expressions and executes a cql statement  
+     * 
+     * @param cql The CQL statement to execute
+     * @param params The Mule parameters, can be expressions without the #[]
+     * @param bulkMode Marks if we need to execute a batch, or a single statement
+     * @param event The current Mule Event
+     * @return List of Maps with results, each map represents a row, each entry in the map represents a column
+     */
+    public List<Map<String, Object>> cassandraDoExecute(String cql, List<String> params, boolean bulkMode, MuleEvent event){
     	
     	//get mule context and expression manager
     	//TODO: these should  be automatically injected using @Inject
@@ -186,13 +218,21 @@ public class CassandraDbCqlConnector
 			}
 		}
 		
-		//execute the statement using the evaluated parameters
+		//execute the statement using the evaluated parameters, result can be ignored
 		List<Row> result = cassandraExecuteStatement(cql, evaluatedParameters, batchSize);
 		
 		//convert result to list of maps and return
 		return CassandraDbCqlUtils.toMaps(result);
-	}
-    
+    }
+
+    /**
+     * Execute a Cassandra CQL statement with the given parameters
+     * 
+     * @param cql The CQL statement
+     * @param parameters The evaluated parameters
+     * @param batchSize The size of the batch
+     * @return List of Cassandra Rows
+     */
 	public List<Row> cassandraExecuteStatement(String cql, List<Object> parameters, int batchSize) {
 
 		logger.debug("Executing statement: " + cql);
