@@ -1,9 +1,11 @@
 /**
+ *
  * Copyright (c) Ricston Ltd.  All rights reserved.  http://www.ricston.com
+ *
  * The software in this package is published under the terms of the CPAL v1.0
  * license, a copy of which has been included with this distribution in the
  * LICENSE.txt file.
- **/
+ */
 
 package com.ricston.cassandradb.cql;
 
@@ -283,10 +285,13 @@ public class CassandraDbCqlConnector {
 
 		// if not in bulk mode, evaluate the expression for each parameter
 		if (!bulkMode) {
-			for (String expression : params) {
-				logger.debug("Evaluating: " + expression);
-				evaluatedParameters.add(expressionManager.evaluate(expression,
-						event));
+			if (params != null)
+			{
+				for (String expression : params) {
+					logger.debug("Evaluating: " + expression);
+					evaluatedParameters.add(expressionManager.evaluate(expression,
+							event));
+				}
 			}
 		}
 		// if in bulk mode, evaluate the expression for each item in the list
@@ -298,12 +303,14 @@ public class CassandraDbCqlConnector {
 			batchSize = listPayload.size();
 
 			for (Object payload : listPayload) {
-				for (String expression : params) {
-					logger.debug("Evaluating: " + expression);
-					evaluatedParameters.add(expressionManager.evaluate(
-							expression, new DefaultMuleEvent(
-									new DefaultMuleMessage(payload, context),
-									event)));
+				if (params != null){
+					for (String expression : params) {
+						logger.debug("Evaluating: " + expression);
+						evaluatedParameters.add(expressionManager.evaluate(
+								expression, new DefaultMuleEvent(
+										new DefaultMuleMessage(payload, context),
+										event)));
+					}
 				}
 			}
 		}

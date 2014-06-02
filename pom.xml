@@ -15,14 +15,15 @@
     </parent>
 
     <properties>
-        <junit.version>4.9</junit.version>
+        <junit.version>4.8.2</junit.version>
         <mockito.version>1.8.2</mockito.version>
-        <jdk.version>1.6</jdk.version>
+        <jdk.version>1.7</jdk.version>
         <category>Community</category>
         <licensePath>LICENSE.md</licensePath>
         <devkit.studio.package.skip>false</devkit.studio.package.skip>
         
         <cassandra.driver.version>2.0.2</cassandra.driver.version>
+        <cassandra.unit.version>2.0.2.1</cassandra.unit.version>
     </properties>
 
     <scm>
@@ -44,6 +45,14 @@
 			<version>${junit.version}</version>
 			<scope>test</scope>
 		</dependency>
+		
+		<dependency>
+			<groupId>org.cassandraunit</groupId>
+			<artifactId>cassandra-unit-spring</artifactId>
+			<version>${cassandra.unit.version}</version>
+			<scope>test</scope>
+		</dependency>
+		
     </dependencies>
 
     <repositories>

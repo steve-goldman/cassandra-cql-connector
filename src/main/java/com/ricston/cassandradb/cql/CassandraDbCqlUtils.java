@@ -103,7 +103,7 @@ public class CassandraDbCqlUtils {
 			Map<String, Object> mapRow = new HashMap<String, Object>();
 			result.add(mapRow);
 
-			// for each column defintion, get name and value, and add to map
+			// for each column definition, get name and value, and add to map
 			for (Iterator<ColumnDefinitions.Definition> i = columDefinitions
 					.iterator(); i.hasNext();) {
 				ColumnDefinitions.Definition def = i.next();
@@ -111,7 +111,11 @@ public class CassandraDbCqlUtils {
 				String name = def.getName();
 				DataType type = def.getType();
 				ByteBuffer bytes = row.getBytesUnsafe(name);
-				Object javaObject = type.deserialize(bytes);
+				Object javaObject = null;
+				
+				if (bytes != null){
+					javaObject = type.deserialize(bytes);
+				}
 
 				mapRow.put(name, javaObject);
 			}
