@@ -229,7 +229,7 @@ public class CassandraDbCqlConnector {
 	 */
 	@Processor
 	@Inject
-	public void update(String cql, List<String> params,
+	public void update(String cql, @Optional List<String> params,
 			@Default(value = "false") boolean bulkMode, MuleEvent event) {
 		cassandraDoExecute(cql, params, bulkMode, event);
 	}
@@ -251,7 +251,7 @@ public class CassandraDbCqlConnector {
 	 */
 	@Processor
 	@Inject
-	public List<Map<String, Object>> select(String cql, List<String> params,
+	public List<Map<String, Object>> select(String cql, @Optional List<String> params,
 			MuleEvent event) {
 		return cassandraDoExecute(cql, params, false, event);
 	}
