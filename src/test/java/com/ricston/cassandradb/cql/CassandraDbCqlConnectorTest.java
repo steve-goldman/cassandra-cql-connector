@@ -13,27 +13,55 @@
 package com.ricston.cassandradb.cql;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import org.cassandraunit.CassandraCQLUnit;
+import org.cassandraunit.dataset.cql.ClassPathCQLDataSet;
+import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.mule.api.MuleEvent;
 import org.mule.tck.junit4.FunctionalTestCase;
 
 public class CassandraDbCqlConnectorTest extends FunctionalTestCase
 {
+	@Rule
+    public CassandraCQLUnit cassandraCQLUnit = new CassandraCQLUnit(new ClassPathCQLDataSet("simple.cql","cassandra_unit_keyspace"));
+	
+	
+    @Test
+    public void testSelect() throws Exception
+    {
+    	Map<String, Object> payload = new HashMap<String, Object>();
+    	payload.put("id", "65b09341-cfc5-4ec6-a778-b6b5eabc61f1");
+    	
+    	MuleEvent event = runFlow("selectFlow", payload);
+    	@SuppressWarnings("unchecked")
+		List<Map<String, Object>> resultPayload = (List<Map<String, Object>>) event.getMessage().getPayload();
+    	Assert.assertEquals("value001", resultPayload.get(0).get("value"));
+    }
+    
+    @Test
+    public void testInsert() throws Exception
+    {
+    	Map<String, Object> payload = new HashMap<String, Object>();
+    	payload.put("id", "65b09341-cfc5-4ec6-a778-b6b5eabc61f6");
+    	payload.put("name", "name surname");
+    	
+    	runFlow("insertFlow", payload);
+    	
+    	MuleEvent event = runFlow("selectFlow", payload);
+    	
+    	@SuppressWarnings("unchecked")
+		List<Map<String, Object>> resultPayload = (List<Map<String, Object>>) event.getMessage().getPayload();
+    	Assert.assertEquals("name surname", resultPayload.get(0).get("value"));
+    }
+	
 	@Override
     protected String getConfigFile()
     {
         return "mule-config.xml";
-    }
-
-    @Test
-    public void testFlow() throws Exception
-    {
-    	Map<String, Object> payload = new HashMap<String, Object>();
-    	payload.put("id", "65b09341-cfc5-4ec6-a778-b6b5eabc61fd");
-    	payload.put("name", "name surname");
-    	
-    	runFlow("testFlow", payload);
     }
 
 }

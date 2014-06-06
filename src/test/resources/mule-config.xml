@@ -8,19 +8,26 @@
         http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
         http://www.mulesoft.org/schema/mule/cassandradbcql http://www.mulesoft.org/schema/mule/cassandradbcql/1.0-SNAPSHOT/mule-cassandradbcql.xsd">
 
-    <cassandradbcql:config username="root" host="localhost" keyspace="minely">
+    <cassandradbcql:config username="root" host="127.0.0.1" port="9142" keyspace="cassandra_unit_keyspace">
     	<cassandradbcql:local-pooling-options coreConnectionsPerHost="5" maxConnectionsPerHost="15" minSimultaneousRequestsPerConnectionThreshold="50" maxSimultaneousRequestsPerConnectionThreshold="150" />
     	<cassandradbcql:remote-pooling-options coreConnectionsPerHost="2" maxConnectionsPerHost="15" minSimultaneousRequestsPerConnectionThreshold="10" maxSimultaneousRequestsPerConnectionThreshold="50" />
     </cassandradbcql:config>
 
-    <flow name="testFlow">
-    	<logger level="INFO" message="#[message.payload]"/>
-        <cassandradbcql:select cql="Select * from vatrates where id = ?">
+    <flow name="selectFlow">
+        <cassandradbcql:select cql="Select * from testTable where id = ?">
         	<cassandradbcql:params>
         		<cassandradbcql:param>java.util.UUID.fromString(payload['id'])</cassandradbcql:param>
         	</cassandradbcql:params>
         </cassandradbcql:select>
-        <logger level="INFO" message="#[message.payload]"/>
+    </flow>
+    
+    <flow name="insertFlow">
+        <cassandradbcql:select cql="INSERT INTO testTable (id, value) VALUES(?,?)">
+        	<cassandradbcql:params>
+        		<cassandradbcql:param>java.util.UUID.fromString(payload['id'])</cassandradbcql:param>
+        		<cassandradbcql:param>payload['name']</cassandradbcql:param>
+        	</cassandradbcql:params>
+        </cassandradbcql:select>
     </flow>
 
 </mule>
