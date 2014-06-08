@@ -67,7 +67,7 @@ public class CassandraDbCqlConnector {
 	 * Host name to connect to
 	 */
 	@Configurable
-	@Default(value = "localhost")
+	@Default(value = "127.0.0.1")
 	private String host;
 
 	/**
@@ -79,7 +79,7 @@ public class CassandraDbCqlConnector {
 	
 	@Configurable
 	@Optional
-	private List<CassandraDbCqlContractPoint> contactPoints;
+	private List<ContractPointConfiguration> contactPoints;
 
 	/**
 	 * Keyspace to use
@@ -100,14 +100,14 @@ public class CassandraDbCqlConnector {
 	 */
 	@Optional
 	@Configurable
-	private CassandraDbCqlPoolingOptions localPoolingOptions;
+	private PoolingOptionsConfiguration localPoolingOptions;
 
 	/**
 	 * Remote pooling options
 	 */
 	@Optional
 	@Configurable
-	private CassandraDbCqlPoolingOptions remotePoolingOptions;
+	private PoolingOptionsConfiguration remotePoolingOptions;
 
 	/**
 	 * Mule Expression Manager
@@ -144,7 +144,7 @@ public class CassandraDbCqlConnector {
 		}
 		//otherwise, add each address to the addresses collection
 		else{
-			for(CassandraDbCqlContractPoint contactPoint : contactPoints){
+			for(ContractPointConfiguration contactPoint : contactPoints){
 				InetSocketAddress address = new InetSocketAddress(contactPoint.getHost(), contactPoint.getPort());
 				addresses.add(address);
 			}
@@ -154,12 +154,12 @@ public class CassandraDbCqlConnector {
 		PoolingOptions poolingOptions = new PoolingOptions();
 		// set local pooling options
 		if (localPoolingOptions != null) {
-			CassandraDbCqlUtils.updatePoolingOptions(poolingOptions, localPoolingOptions, HostDistance.LOCAL);
+			Utils.updatePoolingOptions(poolingOptions, localPoolingOptions, HostDistance.LOCAL);
 		}
 
 		// set remote pooling options
 		if (remotePoolingOptions != null) {
-			CassandraDbCqlUtils.updatePoolingOptions(poolingOptions, remotePoolingOptions, HostDistance.REMOTE);
+			Utils.updatePoolingOptions(poolingOptions, remotePoolingOptions, HostDistance.REMOTE);
 		}
 		
 		//create cluster connection builder 
@@ -175,7 +175,7 @@ public class CassandraDbCqlConnector {
 
 		// build cluster and log information
 		cluster = builder.build();
-		CassandraDbCqlUtils.logClusterInformation(cluster);
+		Utils.logClusterInformation(cluster);
 	}
 
 	/**
@@ -329,7 +329,7 @@ public class CassandraDbCqlConnector {
 				batchSize);
 
 		// convert result to list of maps and return
-		return CassandraDbCqlUtils.toMaps(result);
+		return Utils.toMaps(result);
 	}
 
 	/**
@@ -520,7 +520,7 @@ public class CassandraDbCqlConnector {
 	 * 
 	 * @return
 	 */
-	public CassandraDbCqlPoolingOptions getLocalPoolingOptions() {
+	public PoolingOptionsConfiguration getLocalPoolingOptions() {
 		return localPoolingOptions;
 	}
 
@@ -529,7 +529,7 @@ public class CassandraDbCqlConnector {
 	 * @param localPoolingOptions
 	 */
 	public void setLocalPoolingOptions(
-			CassandraDbCqlPoolingOptions localPoolingOptions) {
+			PoolingOptionsConfiguration localPoolingOptions) {
 		this.localPoolingOptions = localPoolingOptions;
 	}
 
@@ -537,7 +537,7 @@ public class CassandraDbCqlConnector {
 	 * 
 	 * @return
 	 */
-	public CassandraDbCqlPoolingOptions getRemotePoolingOptions() {
+	public PoolingOptionsConfiguration getRemotePoolingOptions() {
 		return remotePoolingOptions;
 	}
 
@@ -546,7 +546,7 @@ public class CassandraDbCqlConnector {
 	 * @param remotePoolingOptions
 	 */
 	public void setRemotePoolingOptions(
-			CassandraDbCqlPoolingOptions remotePoolingOptions) {
+			PoolingOptionsConfiguration remotePoolingOptions) {
 		this.remotePoolingOptions = remotePoolingOptions;
 	}
 
@@ -554,7 +554,7 @@ public class CassandraDbCqlConnector {
 	 * 
 	 * @return
 	 */
-	public List<CassandraDbCqlContractPoint> getContactPoints() {
+	public List<ContractPointConfiguration> getContactPoints() {
 		return contactPoints;
 	}
 
@@ -562,7 +562,7 @@ public class CassandraDbCqlConnector {
 	 * 
 	 * @param contactPoints
 	 */
-	public void setContactPoints(List<CassandraDbCqlContractPoint> contactPoints) {
+	public void setContactPoints(List<ContractPointConfiguration> contactPoints) {
 		this.contactPoints = contactPoints;
 	}
 

@@ -32,7 +32,7 @@ import com.datastax.driver.core.Row;
  * @author Alan Cassar, Ricston Ltd.
  * 
  */
-public class CassandraDbCqlUtils {
+public class Utils {
 
 	/**
 	 * Log some Cassandra Cluster information
@@ -145,30 +145,30 @@ public class CassandraDbCqlUtils {
 	 * 
 	 * @param poolingOptions
 	 *            PoolingOption to update
-	 * @param newPoolingOptions
+	 * @param configurationPoolingOptions
 	 *            values to use for the update
 	 * @param hostDistance
 	 *            HostDistance
 	 */
 	public static void updatePoolingOptions(PoolingOptions poolingOptions,
-			CassandraDbCqlPoolingOptions newPoolingOptions,
+			PoolingOptionsConfiguration configurationPoolingOptions,
 			HostDistance hostDistance) {
 		poolingOptions
-				.setCoreConnectionsPerHost(hostDistance, CassandraDbCqlUtils
-						.defaultIfNull(newPoolingOptions
+				.setCoreConnectionsPerHost(hostDistance, Utils
+						.defaultIfNull(configurationPoolingOptions
 								.getCoreConnectionsPerHost(), poolingOptions
 								.getCoreConnectionsPerHost(hostDistance)));
 
 		poolingOptions.setMaxConnectionsPerHost(hostDistance,
-				CassandraDbCqlUtils.defaultIfNull(
-						newPoolingOptions.getMaxConnectionsPerHost(),
+				Utils.defaultIfNull(
+						configurationPoolingOptions.getMaxConnectionsPerHost(),
 						poolingOptions.getMaxConnectionsPerHost(hostDistance)));
 
 		poolingOptions
 				.setMinSimultaneousRequestsPerConnectionThreshold(
 						hostDistance,
-						CassandraDbCqlUtils.defaultIfNull(
-								newPoolingOptions
+						Utils.defaultIfNull(
+								configurationPoolingOptions
 										.getMinSimultaneousRequestsPerConnectionThreshold(),
 								poolingOptions
 										.getMinSimultaneousRequestsPerConnectionThreshold(hostDistance)));
@@ -176,8 +176,8 @@ public class CassandraDbCqlUtils {
 		poolingOptions
 				.setMaxSimultaneousRequestsPerConnectionThreshold(
 						hostDistance,
-						CassandraDbCqlUtils.defaultIfNull(
-								newPoolingOptions
+						Utils.defaultIfNull(
+								configurationPoolingOptions
 										.getMaxSimultaneousRequestsPerConnectionThreshold(),
 								poolingOptions
 										.getMaxSimultaneousRequestsPerConnectionThreshold(hostDistance)));

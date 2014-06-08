@@ -15,7 +15,7 @@ package com.ricston.cassandradb.cql;
  * @author Alan Cassar, Ricston Ltd.
  *
  */
-public class CassandraDbCqlPoolingOptions {
+public class PoolingOptionsConfiguration {
 
 	private Integer coreConnectionsPerHost;
 	private Integer maxConnectionsPerHost;

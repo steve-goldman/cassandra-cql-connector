@@ -15,7 +15,7 @@ package com.ricston.cassandradb.cql;
  * @author Alan Cassar, Ricston Ltd.
  *
  */
-public class CassandraDbCqlContractPoint {
+public class ContractPointConfiguration {
 	
 	private String host;
 	private Integer port;
