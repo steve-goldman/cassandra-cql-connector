@@ -9,6 +9,11 @@
         http://www.mulesoft.org/schema/mule/cassandradbcql http://www.mulesoft.org/schema/mule/cassandradbcql/1.0-SNAPSHOT/mule-cassandradbcql.xsd">
 
     <cassandradbcql:config username="root" host="127.0.0.1" port="9142" keyspace="cassandra_unit_keyspace">
+    
+    	<cassandradbcql:contact-points>
+    		<cassandradbcql:contact-point host="127.0.0.1" port="9142"/>
+    	</cassandradbcql:contact-points>
+    	
     	<cassandradbcql:local-pooling-options coreConnectionsPerHost="5" maxConnectionsPerHost="15" minSimultaneousRequestsPerConnectionThreshold="50" maxSimultaneousRequestsPerConnectionThreshold="150" />
     	<cassandradbcql:remote-pooling-options coreConnectionsPerHost="2" maxConnectionsPerHost="15" minSimultaneousRequestsPerConnectionThreshold="10" maxSimultaneousRequestsPerConnectionThreshold="50" />
     </cassandradbcql:config>

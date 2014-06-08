@@ -112,8 +112,8 @@ public class CassandraDbCqlUtils {
 				DataType type = def.getType();
 				ByteBuffer bytes = row.getBytesUnsafe(name);
 				Object javaObject = null;
-				
-				if (bytes != null){
+
+				if (bytes != null) {
 					javaObject = type.deserialize(bytes);
 				}
 
@@ -123,13 +123,64 @@ public class CassandraDbCqlUtils {
 
 		return result;
 	}
-	
-	public static <T> T defaultIfNull(T element, T defaultValue){
-		if (element != null){
+
+	/**
+	 * Return a default value if element is null, otherwise return the original
+	 * element
+	 * 
+	 * @param element
+	 * @param defaultValue
+	 * @return
+	 */
+	public static <T> T defaultIfNull(T element, T defaultValue) {
+		if (element != null) {
 			return element;
 		}
-		
+
 		return defaultValue;
+	}
+
+	/**
+	 * Update Cassandra's pooling options
+	 * 
+	 * @param poolingOptions
+	 *            PoolingOption to update
+	 * @param newPoolingOptions
+	 *            values to use for the update
+	 * @param hostDistance
+	 *            HostDistance
+	 */
+	public static void updatePoolingOptions(PoolingOptions poolingOptions,
+			CassandraDbCqlPoolingOptions newPoolingOptions,
+			HostDistance hostDistance) {
+		poolingOptions
+				.setCoreConnectionsPerHost(hostDistance, CassandraDbCqlUtils
+						.defaultIfNull(newPoolingOptions
+								.getCoreConnectionsPerHost(), poolingOptions
+								.getCoreConnectionsPerHost(hostDistance)));
+
+		poolingOptions.setMaxConnectionsPerHost(hostDistance,
+				CassandraDbCqlUtils.defaultIfNull(
+						newPoolingOptions.getMaxConnectionsPerHost(),
+						poolingOptions.getMaxConnectionsPerHost(hostDistance)));
+
+		poolingOptions
+				.setMinSimultaneousRequestsPerConnectionThreshold(
+						hostDistance,
+						CassandraDbCqlUtils.defaultIfNull(
+								newPoolingOptions
+										.getMinSimultaneousRequestsPerConnectionThreshold(),
+								poolingOptions
+										.getMinSimultaneousRequestsPerConnectionThreshold(hostDistance)));
+
+		poolingOptions
+				.setMaxSimultaneousRequestsPerConnectionThreshold(
+						hostDistance,
+						CassandraDbCqlUtils.defaultIfNull(
+								newPoolingOptions
+										.getMaxSimultaneousRequestsPerConnectionThreshold(),
+								poolingOptions
+										.getMaxSimultaneousRequestsPerConnectionThreshold(hostDistance)));
 	}
 
 }

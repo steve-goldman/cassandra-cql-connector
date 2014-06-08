@@ -9,6 +9,7 @@
 
 package com.ricston.cassandradb.cql;
 
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -37,6 +38,7 @@ import org.mule.api.annotations.param.ConnectionKey;
 import org.mule.api.annotations.param.Default;
 import org.mule.api.annotations.param.Optional;
 import org.mule.api.expression.ExpressionManager;
+import org.mule.util.CollectionUtils;
 import org.mule.util.StringUtils;
 
 import com.datastax.driver.core.AuthProvider;
@@ -74,6 +76,10 @@ public class CassandraDbCqlConnector {
 	@Configurable
 	@Default(value = "9042")
 	private Integer port;
+	
+	@Configurable
+	@Optional
+	private List<CassandraDbCqlContractPoint> contactPoints;
 
 	/**
 	 * Keyspace to use
@@ -128,79 +134,43 @@ public class CassandraDbCqlConnector {
 	public void connect(@ConnectionKey String username,
 			@Password @Optional String password) throws ConnectionException {
 
-		PoolingOptions poolingOptions = new PoolingOptions();
-
-		Cluster.Builder builder = Cluster.builder().addContactPoint(host)
-				.withPort(port).withPoolingOptions(poolingOptions);
-
-		if (StringUtils.isNotBlank(password)) {
-			AuthProvider authProvider = new PlainTextAuthProvider(username,
-					password);
-			builder = builder.withAuthProvider(authProvider);
+		//configure address(es)
+		Collection<InetSocketAddress> addresses = new ArrayList<InetSocketAddress>();
+		
+		//if contactPoints is empty, use the host and port
+		if (CollectionUtils.isEmpty(contactPoints)) {
+			InetSocketAddress address = new InetSocketAddress(host, port);
+			addresses.add(address);
+		}
+		//otherwise, add each address to the addresses collection
+		else{
+			for(CassandraDbCqlContractPoint contactPoint : contactPoints){
+				InetSocketAddress address = new InetSocketAddress(contactPoint.getHost(), contactPoint.getPort());
+				addresses.add(address);
+			}
 		}
 
+		//configure pooling properties
+		PoolingOptions poolingOptions = new PoolingOptions();
 		// set local pooling options
 		if (localPoolingOptions != null) {
-
-			poolingOptions.setCoreConnectionsPerHost(HostDistance.LOCAL,
-					CassandraDbCqlUtils.defaultIfNull(localPoolingOptions
-							.getCoreConnectionsPerHost(), poolingOptions
-							.getCoreConnectionsPerHost(HostDistance.LOCAL)));
-
-			poolingOptions.setMaxConnectionsPerHost(HostDistance.LOCAL,
-					CassandraDbCqlUtils.defaultIfNull(localPoolingOptions
-							.getMaxConnectionsPerHost(), poolingOptions
-							.getMaxConnectionsPerHost(HostDistance.LOCAL)));
-
-			poolingOptions
-					.setMinSimultaneousRequestsPerConnectionThreshold(
-							HostDistance.LOCAL,
-							CassandraDbCqlUtils.defaultIfNull(
-									localPoolingOptions
-											.getMinSimultaneousRequestsPerConnectionThreshold(),
-									poolingOptions
-											.getMinSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL)));
-
-			poolingOptions
-					.setMaxSimultaneousRequestsPerConnectionThreshold(
-							HostDistance.LOCAL,
-							CassandraDbCqlUtils.defaultIfNull(
-									localPoolingOptions
-											.getMaxSimultaneousRequestsPerConnectionThreshold(),
-									poolingOptions
-											.getMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL)));
+			CassandraDbCqlUtils.updatePoolingOptions(poolingOptions, localPoolingOptions, HostDistance.LOCAL);
 		}
 
 		// set remote pooling options
 		if (remotePoolingOptions != null) {
+			CassandraDbCqlUtils.updatePoolingOptions(poolingOptions, remotePoolingOptions, HostDistance.REMOTE);
+		}
+		
+		//create cluster connection builder 
+		Cluster.Builder builder = Cluster.builder().addContactPointsWithPorts(addresses)
+				.withPoolingOptions(poolingOptions);
 
-			poolingOptions.setCoreConnectionsPerHost(HostDistance.REMOTE,
-					CassandraDbCqlUtils.defaultIfNull(remotePoolingOptions
-							.getCoreConnectionsPerHost(), poolingOptions
-							.getCoreConnectionsPerHost(HostDistance.REMOTE)));
-
-			poolingOptions.setMaxConnectionsPerHost(HostDistance.REMOTE,
-					CassandraDbCqlUtils.defaultIfNull(remotePoolingOptions
-							.getMaxConnectionsPerHost(), poolingOptions
-							.getMaxConnectionsPerHost(HostDistance.REMOTE)));
-
-			poolingOptions
-					.setMinSimultaneousRequestsPerConnectionThreshold(
-							HostDistance.REMOTE,
-							CassandraDbCqlUtils.defaultIfNull(
-									remotePoolingOptions
-											.getMinSimultaneousRequestsPerConnectionThreshold(),
-									poolingOptions
-											.getMinSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE)));
-
-			poolingOptions
-					.setMaxSimultaneousRequestsPerConnectionThreshold(
-							HostDistance.REMOTE,
-							CassandraDbCqlUtils.defaultIfNull(
-									remotePoolingOptions
-											.getMaxSimultaneousRequestsPerConnectionThreshold(),
-									poolingOptions
-											.getMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE)));
+		//configure credentials
+		if (StringUtils.isNotBlank(password)) {
+			AuthProvider authProvider = new PlainTextAuthProvider(username,
+					password);
+			builder = builder.withAuthProvider(authProvider);
 		}
 
 		// build cluster and log information
@@ -578,6 +548,22 @@ public class CassandraDbCqlConnector {
 	public void setRemotePoolingOptions(
 			CassandraDbCqlPoolingOptions remotePoolingOptions) {
 		this.remotePoolingOptions = remotePoolingOptions;
+	}
+
+	/**
+	 * 
+	 * @return
+	 */
+	public List<CassandraDbCqlContractPoint> getContactPoints() {
+		return contactPoints;
+	}
+
+	/**
+	 * 
+	 * @param contactPoints
+	 */
+	public void setContactPoints(List<CassandraDbCqlContractPoint> contactPoints) {
+		this.contactPoints = contactPoints;
 	}
 
 }
