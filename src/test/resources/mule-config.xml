@@ -8,18 +8,19 @@
         http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
         http://www.mulesoft.org/schema/mule/cassandradbcql http://www.mulesoft.org/schema/mule/cassandradbcql/1.0-SNAPSHOT/mule-cassandradbcql.xsd">
 
-    <cassandradbcql:config username="root" host="127.0.0.1" port="9142" keyspace="cassandra_unit_keyspace">
-    
-    	<cassandradbcql:contact-points>
-    		<cassandradbcql:contact-point host="127.0.0.1" port="9142"/>
-    	</cassandradbcql:contact-points>
-    	
+    <cassandradbcql:config name="config1" username="root" host="127.0.0.1" port="9142" keyspace="cassandra_unit_keyspace">
     	<cassandradbcql:local-pooling-options coreConnectionsPerHost="5" maxConnectionsPerHost="15" minSimultaneousRequestsPerConnectionThreshold="50" maxSimultaneousRequestsPerConnectionThreshold="150" />
     	<cassandradbcql:remote-pooling-options coreConnectionsPerHost="2" maxConnectionsPerHost="15" minSimultaneousRequestsPerConnectionThreshold="10" maxSimultaneousRequestsPerConnectionThreshold="50" />
     </cassandradbcql:config>
-
+    
+    <cassandradbcql:config name="config2" username="root" keyspace="cassandra_unit_keyspace">
+    	<cassandradbcql:contact-points>
+    		<cassandradbcql:contact-point host="127.0.0.1" port="9142"/>
+    	</cassandradbcql:contact-points>
+    </cassandradbcql:config>
+    
     <flow name="selectFlow">
-        <cassandradbcql:select cql="Select * from testTable where id = ?">
+        <cassandradbcql:select cql="Select * from testTable where id = ?" config-ref="config1">
         	<cassandradbcql:params>
         		<cassandradbcql:param>java.util.UUID.fromString(payload['id'])</cassandradbcql:param>
         	</cassandradbcql:params>
@@ -27,7 +28,7 @@
     </flow>
     
     <flow name="insertFlow">
-        <cassandradbcql:update cql="INSERT INTO testTable (id, value) VALUES(?, ?)" bulkMode="false">
+        <cassandradbcql:update cql="INSERT INTO testTable (id, value) VALUES(?, ?)" bulkMode="false" config-ref="config1">
         	<cassandradbcql:params>
         		<cassandradbcql:param>java.util.UUID.fromString(payload['id'])</cassandradbcql:param>
         		<cassandradbcql:param>payload['name']</cassandradbcql:param>
@@ -36,7 +37,7 @@
     </flow>
     
     <flow name="updateBulkFlow">
-    	<cassandradbcql:update cql="UPDATE testTable SET value = ? WHERE id = ?" bulkMode="true">
+    	<cassandradbcql:update cql="UPDATE testTable SET value = ? WHERE id = ?" bulkMode="true" config-ref="config2">
         	<cassandradbcql:params>
         		<cassandradbcql:param>payload['name']</cassandradbcql:param>
         		<cassandradbcql:param>java.util.UUID.fromString(payload['id'])</cassandradbcql:param>
