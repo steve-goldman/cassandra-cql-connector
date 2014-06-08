@@ -10,6 +10,7 @@
 package com.ricston.cassandradb.cql;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -48,6 +49,7 @@ import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
+import com.ricston.cassandradb.cql.exception.InvalidTypeException;
 
 /**
  * Cassandra CQL Connector
@@ -56,6 +58,9 @@ import com.datastax.driver.core.Session;
  */
 @Connector(name = "cassandradbcql", schemaVersion = "1.0-SNAPSHOT", friendlyName = "Cassandra DB CQL")
 public class CassandraDbCqlConnector {
+
+	protected static final String EXPRESSION_FORMATTER = "#[%s]";
+
 	/**
 	 * Host name to connect to
 	 */
@@ -119,74 +124,89 @@ public class CassandraDbCqlConnector {
 	 *            A password
 	 * @throws ConnectionException
 	 */
-	@Connect(strategy=ConnectStrategy.SINGLE_INSTANCE)
-    public void connect(@ConnectionKey String username, @Password @Optional String password)
-        throws ConnectionException {
-    	
-    	PoolingOptions poolingOptions = new PoolingOptions();
-    	
-    	Cluster.Builder builder = Cluster.builder()
-    			.addContactPoint(host)
-    			.withPort(port)
-    			.withPoolingOptions(poolingOptions);
-    	
-    	if (StringUtils.isNotBlank(password)){
-    		AuthProvider authProvider = new PlainTextAuthProvider(username, password);
-    		builder = builder.withAuthProvider(authProvider);
-    	}
-    	
-    	//set local pooling options
+	@Connect(strategy = ConnectStrategy.SINGLE_INSTANCE)
+	public void connect(@ConnectionKey String username,
+			@Password @Optional String password) throws ConnectionException {
+
+		PoolingOptions poolingOptions = new PoolingOptions();
+
+		Cluster.Builder builder = Cluster.builder().addContactPoint(host)
+				.withPort(port).withPoolingOptions(poolingOptions);
+
+		if (StringUtils.isNotBlank(password)) {
+			AuthProvider authProvider = new PlainTextAuthProvider(username,
+					password);
+			builder = builder.withAuthProvider(authProvider);
+		}
+
+		// set local pooling options
 		if (localPoolingOptions != null) {
-			
+
 			poolingOptions.setCoreConnectionsPerHost(HostDistance.LOCAL,
 					CassandraDbCqlUtils.defaultIfNull(localPoolingOptions
 							.getCoreConnectionsPerHost(), poolingOptions
 							.getCoreConnectionsPerHost(HostDistance.LOCAL)));
-			
+
 			poolingOptions.setMaxConnectionsPerHost(HostDistance.LOCAL,
 					CassandraDbCqlUtils.defaultIfNull(localPoolingOptions
 							.getMaxConnectionsPerHost(), poolingOptions
 							.getMaxConnectionsPerHost(HostDistance.LOCAL)));
-			
-			poolingOptions.setMinSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL,
-					CassandraDbCqlUtils.defaultIfNull(localPoolingOptions
-							.getMinSimultaneousRequestsPerConnectionThreshold(), poolingOptions
-							.getMinSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL)));
-			
-			poolingOptions.setMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL,
-					CassandraDbCqlUtils.defaultIfNull(localPoolingOptions
-							.getMaxSimultaneousRequestsPerConnectionThreshold(), poolingOptions
-							.getMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL)));
+
+			poolingOptions
+					.setMinSimultaneousRequestsPerConnectionThreshold(
+							HostDistance.LOCAL,
+							CassandraDbCqlUtils.defaultIfNull(
+									localPoolingOptions
+											.getMinSimultaneousRequestsPerConnectionThreshold(),
+									poolingOptions
+											.getMinSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL)));
+
+			poolingOptions
+					.setMaxSimultaneousRequestsPerConnectionThreshold(
+							HostDistance.LOCAL,
+							CassandraDbCqlUtils.defaultIfNull(
+									localPoolingOptions
+											.getMaxSimultaneousRequestsPerConnectionThreshold(),
+									poolingOptions
+											.getMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL)));
 		}
-		
-		//set remote pooling options
+
+		// set remote pooling options
 		if (remotePoolingOptions != null) {
-			
+
 			poolingOptions.setCoreConnectionsPerHost(HostDistance.REMOTE,
 					CassandraDbCqlUtils.defaultIfNull(remotePoolingOptions
 							.getCoreConnectionsPerHost(), poolingOptions
 							.getCoreConnectionsPerHost(HostDistance.REMOTE)));
-			
+
 			poolingOptions.setMaxConnectionsPerHost(HostDistance.REMOTE,
 					CassandraDbCqlUtils.defaultIfNull(remotePoolingOptions
 							.getMaxConnectionsPerHost(), poolingOptions
 							.getMaxConnectionsPerHost(HostDistance.REMOTE)));
-			
-			poolingOptions.setMinSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE,
-					CassandraDbCqlUtils.defaultIfNull(remotePoolingOptions
-							.getMinSimultaneousRequestsPerConnectionThreshold(), poolingOptions
-							.getMinSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE)));
-			
-			poolingOptions.setMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE,
-					CassandraDbCqlUtils.defaultIfNull(remotePoolingOptions
-							.getMaxSimultaneousRequestsPerConnectionThreshold(), poolingOptions
-							.getMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE)));
+
+			poolingOptions
+					.setMinSimultaneousRequestsPerConnectionThreshold(
+							HostDistance.REMOTE,
+							CassandraDbCqlUtils.defaultIfNull(
+									remotePoolingOptions
+											.getMinSimultaneousRequestsPerConnectionThreshold(),
+									poolingOptions
+											.getMinSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE)));
+
+			poolingOptions
+					.setMaxSimultaneousRequestsPerConnectionThreshold(
+							HostDistance.REMOTE,
+							CassandraDbCqlUtils.defaultIfNull(
+									remotePoolingOptions
+											.getMaxSimultaneousRequestsPerConnectionThreshold(),
+									poolingOptions
+											.getMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE)));
 		}
-    	
-		//build cluster and log information
+
+		// build cluster and log information
 		cluster = builder.build();
 		CassandraDbCqlUtils.logClusterInformation(cluster);
-    }
+	}
 
 	/**
 	 * Disconnect
@@ -228,11 +248,24 @@ public class CassandraDbCqlConnector {
 	 *            Marks if we need to execute a batch, or a single statement
 	 * @param event
 	 *            The current Mule Event
+	 * @throws Exception
+	 *             if bulk mode is on, payload has to be collection
 	 */
 	@Processor
 	@Inject
 	public void update(String cql, @Optional List<String> params,
-			@Default(value = "false") boolean bulkMode, MuleEvent event) {
+			@Default(value = "false") boolean bulkMode, MuleEvent event)
+			throws InvalidTypeException {
+
+		if (bulkMode == true) {
+			Object payload = event.getMessage().getPayload();
+
+			if (!(payload instanceof Collection)) {
+				throw new InvalidTypeException(payload.getClass(),
+						Collection.class);
+			}
+		}
+
 		cassandraDoExecute(cql, params, bulkMode, event);
 	}
 
@@ -253,8 +286,8 @@ public class CassandraDbCqlConnector {
 	 */
 	@Processor
 	@Inject
-	public List<Map<String, Object>> select(String cql, @Optional List<String> params,
-			MuleEvent event) {
+	public List<Map<String, Object>> select(String cql,
+			@Optional List<String> params, MuleEvent event) {
 		return cassandraDoExecute(cql, params, false, event);
 	}
 
@@ -285,11 +318,13 @@ public class CassandraDbCqlConnector {
 
 		// if not in bulk mode, evaluate the expression for each parameter
 		if (!bulkMode) {
-			if (params != null)
-			{
+			if (params != null) {
 				for (String expression : params) {
 					logger.debug("Evaluating: " + expression);
-					evaluatedParameters.add(expressionManager.evaluate(expression,
+					expressionManager.validateExpression(String.format(
+							EXPRESSION_FORMATTER, expression));
+					evaluatedParameters.add(expressionManager.evaluate(
+							String.format(EXPRESSION_FORMATTER, expression),
 							event));
 				}
 			}
@@ -298,25 +333,28 @@ public class CassandraDbCqlConnector {
 		// payload
 		else {
 			@SuppressWarnings("unchecked")
-			List<Object> listPayload = (List<Object>) event.getMessage()
-					.getPayload();
-			batchSize = listPayload.size();
+			Collection<Object> collectionPayload = (Collection<Object>) event
+					.getMessage().getPayload();
+			batchSize = collectionPayload.size();
 
-			for (Object payload : listPayload) {
-				if (params != null){
+			for (Object payload : collectionPayload) {
+				if (params != null) {
 					for (String expression : params) {
 						logger.debug("Evaluating: " + expression);
-						evaluatedParameters.add(expressionManager.evaluate(
-								expression, new DefaultMuleEvent(
-										new DefaultMuleMessage(payload, context),
-										event)));
+						expressionManager.validateExpression(String.format(
+								EXPRESSION_FORMATTER, expression));
+						evaluatedParameters
+								.add(expressionManager.evaluate(String.format(
+										EXPRESSION_FORMATTER, expression),
+										new DefaultMuleEvent(
+												new DefaultMuleMessage(payload,
+														context), event)));
 					}
 				}
 			}
 		}
 
-		// execute the statement using the evaluated parameters, result can be
-		// ignored
+		// execute the statement using the evaluated parameters
 		List<Row> result = cassandraExecuteStatement(cql, evaluatedParameters,
 				batchSize);
 

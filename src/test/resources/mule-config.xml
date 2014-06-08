@@ -22,12 +22,21 @@
     </flow>
     
     <flow name="insertFlow">
-        <cassandradbcql:select cql="INSERT INTO testTable (id, value) VALUES(?,?)">
+        <cassandradbcql:update cql="INSERT INTO testTable (id, value) VALUES(?, ?)" bulkMode="false">
         	<cassandradbcql:params>
         		<cassandradbcql:param>java.util.UUID.fromString(payload['id'])</cassandradbcql:param>
         		<cassandradbcql:param>payload['name']</cassandradbcql:param>
         	</cassandradbcql:params>
-        </cassandradbcql:select>
+        </cassandradbcql:update>
+    </flow>
+    
+    <flow name="updateBulkFlow">
+    	<cassandradbcql:update cql="UPDATE testTable SET value = ? WHERE id = ?" bulkMode="true">
+        	<cassandradbcql:params>
+        		<cassandradbcql:param>payload['name']</cassandradbcql:param>
+        		<cassandradbcql:param>java.util.UUID.fromString(payload['id'])</cassandradbcql:param>
+        	</cassandradbcql:params>
+        </cassandradbcql:update>
     </flow>
 
 </mule>

@@ -12,6 +12,7 @@
  */
 package com.ricston.cassandradb.cql;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +29,11 @@ public class CassandraDbCqlConnectorTest extends FunctionalTestCase
 {
 	@Rule
     public CassandraCQLUnit cassandraCQLUnit = new CassandraCQLUnit(new ClassPathCQLDataSet("simple.cql","cassandra_unit_keyspace"));
+	
+	public CassandraDbCqlConnectorTest(){
+		super();
+		this.setDisposeContextPerClass(true);
+	}
 	
 	
     @Test
@@ -52,6 +58,34 @@ public class CassandraDbCqlConnectorTest extends FunctionalTestCase
     	runFlow("insertFlow", payload);
     	
     	MuleEvent event = runFlow("selectFlow", payload);
+    	
+    	@SuppressWarnings("unchecked")
+		List<Map<String, Object>> resultPayload = (List<Map<String, Object>>) event.getMessage().getPayload();
+    	Assert.assertEquals("name surname", resultPayload.get(0).get("value"));
+    }
+    
+    @Test
+    public void testBulkUpdate() throws Exception{
+    	List<Map<String, Object>> payload = new ArrayList<Map<String, Object>>();
+    	
+    	Map<String, Object> item = new HashMap<String, Object>();
+    	item.put("id", "65b09341-cfc5-4ec6-a778-b6b5eabc61f1");
+    	item.put("name", "name surname");
+    	payload.add(item);
+    	
+    	item = new HashMap<String, Object>();
+    	item.put("id", "65b09341-cfc5-4ec6-a778-b6b5eabc61f2");
+    	item.put("name", "name surname");
+    	payload.add(item);
+    	
+    	item = new HashMap<String, Object>();
+    	item.put("id", "65b09341-cfc5-4ec6-a778-b6b5eabc61f3");
+    	item.put("name", "name surname");
+    	payload.add(item);
+    	
+    	runFlow("updateBulkFlow", payload);
+    	
+    	MuleEvent event = runFlow("selectFlow", item);
     	
     	@SuppressWarnings("unchecked")
 		List<Map<String, Object>> resultPayload = (List<Map<String, Object>>) event.getMessage().getPayload();
