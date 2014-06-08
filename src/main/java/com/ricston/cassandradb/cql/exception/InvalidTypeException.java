@@ -11,6 +11,8 @@ package com.ricston.cassandradb.cql.exception;
 
 /**
  * 
+ * Exception class denoting that incorrect payload type was found 
+ * 
  * @author Alan Cassar, Ricston Ltd
  *
  */
