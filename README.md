@@ -67,9 +67,9 @@ To update a table, the following configuration can be used:
 ```
 As above, Mule expressions can be used without the use of #[]. Update also supports bulkMode where the payload is expected to be an instance of java.util.Collection. The CQL statement will be applied to each entry in the collection.  
 
-For information about usage and installation you can check our documentation at http://mulesoft.github.com/mule-module-cassandradb-cql.
+For information about usage and installation you can check our documentation at https://github.com/Ricston/cassandra-cql-connector.
 
 Reporting Issues
 ----------------
 
-We use GitHub:Issues for tracking issues with this connector. You can report new issues at this link https://github.com/mulesoft/mule-module-cassandradb-cql/issues
+We use GitHub:Issues for tracking issues with this connector. You can report new issues at this link https://github.com/Ricston/cassandra-cql-connector/issues
