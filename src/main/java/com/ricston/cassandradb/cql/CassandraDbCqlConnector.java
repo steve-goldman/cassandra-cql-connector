@@ -304,18 +304,36 @@ public class CassandraDbCqlConnector {
 	        final PagingConfiguration pagingConfiguration, String cql, @Optional List<String> params, MuleEvent event) {
 
 		final Session session = getSession();
-		Statement statement = getStatement(cql, params, false, event);
-		final Iterator<Row> iterator = session.execute(statement).iterator();
+		final ResultSet resultSet = session.execute(getStatement(cql, params, false, event));
+		final Iterator<Row> iterator = resultSet.iterator();
 
 		return new ProviderAwarePagingDelegate<Map<String, Object>, CassandraDbCqlConnector>() {
 			ArrayList<Row> list = new ArrayList<Row>();
 
 			@Override
 			public List<Map<String, Object>> getPage(CassandraDbCqlConnector provider) throws Exception {
+				if (!iterator.hasNext()) {
+					// null indicates the end of data
+					return null;
+				}
+
 				list.clear();
-				while (iterator.hasNext() && list.size() < pagingConfiguration.getFetchSize()) {
+
+				// always get one, even if it triggers a fetch
+				list.add(iterator.next());
+
+				// load as many as we can without causing a fetch
+				int getCount = Math.min(pagingConfiguration.getFetchSize() - 1, resultSet.getAvailableWithoutFetching());
+				for (int i = 0; i < getCount; i++) {
 					list.add(iterator.next());
 				}
+
+				// if the next call to getPage would trigger a fetch, force that fetch now
+				if (resultSet.getAvailableWithoutFetching() < pagingConfiguration.getFetchSize()
+						&& !resultSet.isFullyFetched()) {
+					resultSet.fetchMoreResults();
+				}
+
 				return Utils.toMaps(list);
 			}
 
