@@ -56,27 +56,19 @@ public class Utils {
 
 		CassandraDbCqlConnector.logger
 				.info(String
-						.format("Local core connections: %d, Local max connections %d, Local min simultaneous requests per connection: %d, Local max simultaneous requests per connection: %d",
+						.format("Local core connections: %d, Local max connections %d,",
 								poolingOptions
 										.getCoreConnectionsPerHost(HostDistance.LOCAL),
 								poolingOptions
-										.getMaxConnectionsPerHost(HostDistance.LOCAL),
-								poolingOptions
-										.getMinSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL),
-								poolingOptions
-										.getMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.LOCAL)));
+										.getMaxConnectionsPerHost(HostDistance.LOCAL)));
 
 		CassandraDbCqlConnector.logger
 				.info(String
-						.format("Remote core connections: %d, Remote max connections %d, Remote min simultaneous requests per connection: %d, Remote max simultaneous requests per connection: %d",
+						.format("Remote core connections: %d, Remote max connections %d,",
 								poolingOptions
 										.getCoreConnectionsPerHost(HostDistance.REMOTE),
 								poolingOptions
-										.getMaxConnectionsPerHost(HostDistance.REMOTE),
-								poolingOptions
-										.getMinSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE),
-								poolingOptions
-										.getMaxSimultaneousRequestsPerConnectionThreshold(HostDistance.REMOTE)));
+										.getMaxConnectionsPerHost(HostDistance.REMOTE)));
 
 	}
 
@@ -109,15 +101,7 @@ public class Utils {
 				ColumnDefinitions.Definition def = i.next();
 
 				String name = def.getName();
-				DataType type = def.getType();
-				ByteBuffer bytes = row.getBytesUnsafe(name);
-				Object javaObject = null;
-
-				if (bytes != null) {
-					javaObject = type.deserialize(bytes);
-				}
-
-				mapRow.put(name, javaObject);
+				mapRow.put(name, row.getObject(name));
 			}
 		}
 
@@ -163,24 +147,6 @@ public class Utils {
 				Utils.defaultIfNull(
 						configurationPoolingOptions.getMaxConnectionsPerHost(),
 						poolingOptions.getMaxConnectionsPerHost(hostDistance)));
-
-		poolingOptions
-				.setMinSimultaneousRequestsPerConnectionThreshold(
-						hostDistance,
-						Utils.defaultIfNull(
-								configurationPoolingOptions
-										.getMinSimultaneousRequestsPerConnectionThreshold(),
-								poolingOptions
-										.getMinSimultaneousRequestsPerConnectionThreshold(hostDistance)));
-
-		poolingOptions
-				.setMaxSimultaneousRequestsPerConnectionThreshold(
-						hostDistance,
-						Utils.defaultIfNull(
-								configurationPoolingOptions
-										.getMaxSimultaneousRequestsPerConnectionThreshold(),
-								poolingOptions
-										.getMaxSimultaneousRequestsPerConnectionThreshold(hostDistance)));
-	}
+    }
 
 }

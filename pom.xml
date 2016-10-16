@@ -22,8 +22,8 @@
 		<licensePath>LICENSE.md</licensePath>
 		<devkit.studio.package.skip>false</devkit.studio.package.skip>
 
-		<cassandra.driver.version>2.0.2</cassandra.driver.version>
-		<cassandra.unit.version>2.0.2.1</cassandra.unit.version>
+		<cassandra.driver.version>3.1.0</cassandra.driver.version>
+		<cassandra.unit.version>3.0.0.1</cassandra.unit.version>
 	</properties>
 
 	<scm>
@@ -63,15 +63,13 @@
 			<scope>test</scope>
 		</dependency>
 
-<!-- 		<dependency> -->
-<!-- 			<groupId>com.google.guava</groupId> -->
-<!-- 			<artifactId>guava</artifactId> -->
-<!-- 			<version>15.0</version> -->
-<!-- 			<scope>test</scope> -->
-<!-- 		</dependency> -->
-		
 		<!-- end of downgrading libraries -->
 
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>19.0</version>
+		</dependency>
 	</dependencies>
 
 	<repositories>

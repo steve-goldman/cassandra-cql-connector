@@ -19,8 +19,6 @@ public class PoolingOptionsConfiguration {
 
 	private Integer coreConnectionsPerHost;
 	private Integer maxConnectionsPerHost;
-	private Integer minSimultaneousRequestsPerConnectionThreshold;
-	private Integer maxSimultaneousRequestsPerConnectionThreshold;
 
 	public Integer getCoreConnectionsPerHost() {
 		return coreConnectionsPerHost;
@@ -38,21 +36,4 @@ public class PoolingOptionsConfiguration {
 		this.maxConnectionsPerHost = maxConnectionsPerHost;
 	}
 
-	public Integer getMinSimultaneousRequestsPerConnectionThreshold() {
-		return minSimultaneousRequestsPerConnectionThreshold;
-	}
-
-	public void setMinSimultaneousRequestsPerConnectionThreshold(
-			Integer minSimultaneousRequestsPerConnectionThreshold) {
-		this.minSimultaneousRequestsPerConnectionThreshold = minSimultaneousRequestsPerConnectionThreshold;
-	}
-
-	public Integer getMaxSimultaneousRequestsPerConnectionThreshold() {
-		return maxSimultaneousRequestsPerConnectionThreshold;
-	}
-
-	public void setMaxSimultaneousRequestsPerConnectionThreshold(
-			Integer maxSimultaneousRequestsPerConnectionThreshold) {
-		this.maxSimultaneousRequestsPerConnectionThreshold = maxSimultaneousRequestsPerConnectionThreshold;
-	}
 }
