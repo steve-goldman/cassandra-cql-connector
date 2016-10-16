@@ -222,7 +222,6 @@ public class CassandraDbCqlConnector {
 	 *             if bulk mode is on, payload has to be collection
 	 */
 	@Processor
-	@Inject
 	public void update(String cql, @Optional List<String> params,
 			@Default(value = "false") boolean bulkMode, MuleEvent event)
 			throws InvalidTypeException {
@@ -255,7 +254,6 @@ public class CassandraDbCqlConnector {
 	 *         in the map represents a column
 	 */
 	@Processor
-	@Inject
 	public List<Map<String, Object>> select(String cql,
 			@Optional List<String> params, MuleEvent event) {
 		return cassandraDoExecute(cql, params, false, event);
