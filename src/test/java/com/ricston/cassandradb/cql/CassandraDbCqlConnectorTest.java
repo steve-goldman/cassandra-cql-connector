@@ -23,6 +23,7 @@ import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mule.api.MuleEvent;
+import org.mule.streaming.ConsumerIterator;
 import org.mule.tck.junit4.FunctionalTestCase;
 
 public class CassandraDbCqlConnectorTest extends FunctionalTestCase
@@ -47,7 +48,19 @@ public class CassandraDbCqlConnectorTest extends FunctionalTestCase
 		List<Map<String, Object>> resultPayload = (List<Map<String, Object>>) event.getMessage().getPayload();
     	Assert.assertEquals("value001", resultPayload.get(0).get("value"));
     }
-    
+
+    @Test
+    public void testSelectStreaming() throws Exception
+    {
+        Map<String, Object> payload = new HashMap<String, Object>();
+        payload.put("id", "65b09341-cfc5-4ec6-a778-b6b5eabc61f1");
+
+        MuleEvent event = runFlow("selectStreamingFlow", payload);
+        @SuppressWarnings("unchecked")
+        ConsumerIterator<Map<String, Object>> resultPayload = (ConsumerIterator<Map<String, Object>>) event.getMessage().getPayload();
+        Assert.assertEquals("value001", resultPayload.next().get("value"));
+    }
+
     @Test
     public void testInsert() throws Exception
     {

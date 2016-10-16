@@ -12,6 +12,7 @@ package com.ricston.cassandradb.cql;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,12 +26,14 @@ import org.mule.DefaultMuleMessage;
 import org.mule.api.ConnectionException;
 import org.mule.api.MuleContext;
 import org.mule.api.MuleEvent;
+import org.mule.api.MuleException;
 import org.mule.api.annotations.Configurable;
 import org.mule.api.annotations.Connect;
 import org.mule.api.annotations.ConnectStrategy;
 import org.mule.api.annotations.ConnectionIdentifier;
 import org.mule.api.annotations.Connector;
 import org.mule.api.annotations.Disconnect;
+import org.mule.api.annotations.Paged;
 import org.mule.api.annotations.Processor;
 import org.mule.api.annotations.ValidateConnection;
 import org.mule.api.annotations.display.Password;
@@ -38,6 +41,8 @@ import org.mule.api.annotations.param.ConnectionKey;
 import org.mule.api.annotations.param.Default;
 import org.mule.api.annotations.param.Optional;
 import org.mule.api.expression.ExpressionManager;
+import org.mule.streaming.PagingConfiguration;
+import org.mule.streaming.ProviderAwarePagingDelegate;
 import org.mule.util.CollectionUtils;
 import org.mule.util.StringUtils;
 
@@ -45,6 +50,7 @@ import com.datastax.driver.core.AuthProvider;
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.HostDistance;
+import com.datastax.driver.core.QueryOptions;
 import com.datastax.driver.core.PlainTextAuthProvider;
 import com.datastax.driver.core.PoolingOptions;
 import com.datastax.driver.core.PreparedStatement;
@@ -273,6 +279,57 @@ public class CassandraDbCqlConnector {
 		List<Map<String, Object>> maps = Utils.toMaps(resultSet.all());
 		session.close();
 		return maps;
+	}
+
+	/**
+	 * Performs a select statement on Cassandra and returns rows in
+	 * chunks via the callback interface
+	 *
+	 * {@sample.xml ../../../doc/CassandraDbCql-connector.xml.sample
+	 * cassandradbcql:select}
+	 *
+	 * @param pagingConfiguration
+	 *            The source of fetch size
+	 * @param cql
+	 *            The CQL statement to execute
+	 * @param params
+	 *            The Mule parameters, can be expressions without the #[]
+	 * @param event
+	 *            The current Mule Event
+	 * @return Delegate that can be called for pages of results
+	 */
+	@Processor
+	@Paged
+	public ProviderAwarePagingDelegate<Map<String, Object>, CassandraDbCqlConnector> selectStreaming(
+	        final PagingConfiguration pagingConfiguration, String cql, @Optional List<String> params, MuleEvent event) {
+
+		final Session session = getSession();
+		Statement statement = getStatement(cql, params, false, event);
+		final Iterator<Row> iterator = session.execute(statement).iterator();
+
+		return new ProviderAwarePagingDelegate<Map<String, Object>, CassandraDbCqlConnector>() {
+			ArrayList<Row> list = new ArrayList<Row>();
+
+			@Override
+			public List<Map<String, Object>> getPage(CassandraDbCqlConnector provider) throws Exception {
+				list.clear();
+				while (iterator.hasNext() && list.size() < pagingConfiguration.getFetchSize()) {
+					list.add(iterator.next());
+				}
+				return Utils.toMaps(list);
+			}
+
+			@Override
+			public int getTotalResults(CassandraDbCqlConnector provider) throws Exception {
+				// -1 means we don't know how many pages
+				return -1;
+			}
+
+			@Override
+			public void close() throws MuleException {
+				session.close();
+			}
+		};
 	}
 
 	private Statement getStatement(String cql,

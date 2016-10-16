@@ -26,7 +26,15 @@
         	</cassandradbcql:params>
         </cassandradbcql:select>
     </flow>
-    
+
+    <flow name="selectStreamingFlow">
+        <cassandradbcql:select-streaming cql="Select * from testTable where id = ?" config-ref="config1">
+            <cassandradbcql:params>
+                <cassandradbcql:param>java.util.UUID.fromString(payload['id'])</cassandradbcql:param>
+            </cassandradbcql:params>
+        </cassandradbcql:select-streaming>
+    </flow>
+
     <flow name="insertFlow">
         <cassandradbcql:update cql="INSERT INTO testTable (id, value) VALUES(?, ?)" bulkMode="false" config-ref="config1">
         	<cassandradbcql:params>
