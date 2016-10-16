@@ -50,6 +50,7 @@ import com.datastax.driver.core.PoolingOptions;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.Session;
 import com.ricston.cassandradb.cql.exception.InvalidTypeException;
 
@@ -235,7 +236,9 @@ public class CassandraDbCqlConnector {
 			}
 		}
 
-		cassandraDoExecute(cql, params, bulkMode, event);
+		Session session = getSession();
+		session.execute(getStatement(cql, params, bulkMode, event));
+		session.close();
 	}
 
 	/**
@@ -256,24 +259,15 @@ public class CassandraDbCqlConnector {
 	@Processor
 	public List<Map<String, Object>> select(String cql,
 			@Optional List<String> params, MuleEvent event) {
-		return cassandraDoExecute(cql, params, false, event);
+
+		Session session = getSession();
+		ResultSet resultSet = session.execute(getStatement(cql, params, false, event));
+		List<Map<String, Object>> maps = Utils.toMaps(resultSet.all());
+		session.close();
+		return maps;
 	}
 
-	/**
-	 * Evaluates the parameter expressions and executes a cql statement
-	 * 
-	 * @param cql
-	 *            The CQL statement to execute
-	 * @param params
-	 *            The Mule parameters, can be expressions without the #[]
-	 * @param bulkMode
-	 *            Marks if we need to execute a batch, or a single statement
-	 * @param event
-	 *            The current Mule Event
-	 * @return List of Maps with results, each map represents a row, each entry
-	 *         in the map represents a column
-	 */
-	public List<Map<String, Object>> cassandraDoExecute(String cql,
+	private Statement getStatement(String cql,
 			List<String> params, boolean bulkMode, MuleEvent event) {
 
 		// get mule context and expression manager
@@ -322,48 +316,11 @@ public class CassandraDbCqlConnector {
 			}
 		}
 
-		// execute the statement using the evaluated parameters
-		List<Row> result = cassandraExecuteStatement(cql, evaluatedParameters,
-				batchSize);
-
-		// convert result to list of maps and return
-		return Utils.toMaps(result);
-	}
-
-	/**
-	 * Execute a Cassandra CQL statement with the given parameters
-	 * 
-	 * @param cql
-	 *            The CQL statement
-	 * @param parameters
-	 *            The evaluated parameters
-	 * @param batchSize
-	 *            The size of the batch
-	 * @return List of Cassandra Rows
-	 */
-	public List<Row> cassandraExecuteStatement(String cql,
-			List<Object> parameters, int batchSize) {
-
 		logger.debug("Executing statement: " + cql);
 
 		// get session and prepared statement
 		Session session = getSession();
-		PreparedStatement statement = getPreparedStatement(cql, batchSize,
-				session);
-
-		// bind the parameters
-		BoundStatement boundStatement = new BoundStatement(statement);
-		boundStatement = boundStatement.bind(parameters.toArray());
-
-		// execute statement
-		ResultSet resultSet = session.execute(boundStatement);
-
-		// read all results
-		List<Row> rowList = resultSet.all();
-
-		// close session and return
-		session.close();
-		return rowList;
+		return getBoundStatement(getPreparedStatement(cql, batchSize, session), evaluatedParameters);
 	}
 
 	/**
@@ -404,6 +361,13 @@ public class CassandraDbCqlConnector {
 		}
 
 		return statement;
+	}
+
+	private BoundStatement getBoundStatement(PreparedStatement statement, List<Object> parameters)
+	{
+		// bind the parameters
+		BoundStatement boundStatement = new BoundStatement(statement);
+		return boundStatement.bind(parameters.toArray());
 	}
 
 	/**
