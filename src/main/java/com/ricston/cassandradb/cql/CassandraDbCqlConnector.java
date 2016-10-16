@@ -78,6 +78,13 @@ public class CassandraDbCqlConnector {
 	@Default(value = "9042")
 	private Integer port;
 	
+	/**
+	 * Fetch size for streaming select
+	 */
+	@Configurable
+	@Default(value = "5000")
+	private Integer fetchSize;
+
 	@Configurable
 	@Optional
 	private List<ContractPointConfiguration> contactPoints;
@@ -165,7 +172,8 @@ public class CassandraDbCqlConnector {
 		
 		//create cluster connection builder 
 		Cluster.Builder builder = Cluster.builder().addContactPointsWithPorts(addresses)
-				.withPoolingOptions(poolingOptions);
+				.withPoolingOptions(poolingOptions)
+				.withQueryOptions(new QueryOptions().setFetchSize(fetchSize));
 
 		//configure credentials
 		if (StringUtils.isNotBlank(password)) {
@@ -432,6 +440,22 @@ public class CassandraDbCqlConnector {
 
 	/**
 	 * 
+	 * @return
+	 */
+	public Integer getFetchSize() {
+		return fetchSize;
+	}
+
+	/**
+	 *
+	 * @param fetchSize
+	 */
+	public void setFetchSize(Integer fetchSize) {
+		this.fetchSize = fetchSize;
+	}
+
+	/**
+	 *
 	 * @return
 	 */
 	public String getKeyspace() {
