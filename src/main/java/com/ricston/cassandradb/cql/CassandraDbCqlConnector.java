@@ -275,7 +275,7 @@ public class CassandraDbCqlConnector {
 			@Optional List<String> params, MuleEvent event) {
 
 		Session session = getSession();
-		ResultSet resultSet = session.execute(getStatement(cql, params, false, event));
+		ResultSet resultSet = session.execute(getIdempotentStatement(cql, params, event));
 		List<Map<String, Object>> maps = Utils.toMaps(resultSet.all());
 		session.close();
 		return maps;
@@ -304,7 +304,7 @@ public class CassandraDbCqlConnector {
 	        final PagingConfiguration pagingConfiguration, String cql, @Optional List<String> params, MuleEvent event) {
 
 		final Session session = getSession();
-		final ResultSet resultSet = session.execute(getStatement(cql, params, false, event));
+		final ResultSet resultSet = session.execute(getIdempotentStatement(cql, params, event));
 		final Iterator<Row> iterator = resultSet.iterator();
 
 		return new ProviderAwarePagingDelegate<Map<String, Object>, CassandraDbCqlConnector>() {
@@ -348,6 +348,10 @@ public class CassandraDbCqlConnector {
 				session.close();
 			}
 		};
+	}
+
+	private Statement getIdempotentStatement(String cql, List<String> params, MuleEvent event) {
+		return getStatement(cql, params, false, event).setIdempotent(true);
 	}
 
 	private Statement getStatement(String cql,
