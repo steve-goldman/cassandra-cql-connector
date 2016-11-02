@@ -71,7 +71,7 @@ public class CassandraDbCqlConnector {
 	protected static final String EXPRESSION_FORMATTER = "#[%s]";
 
 	/**
-	 * Host name to connect to
+	 * Comma-separated list of host names to connect to
 	 */
 	@Configurable
 	@Default(value = "127.0.0.1")
@@ -153,8 +153,10 @@ public class CassandraDbCqlConnector {
 		
 		//if contactPoints is empty, use the host and port
 		if (CollectionUtils.isEmpty(contactPoints)) {
-			InetSocketAddress address = new InetSocketAddress(host, port);
-			addresses.add(address);
+			for (String host : this.host.split(",")) {
+				InetSocketAddress address = new InetSocketAddress(host, port);
+				addresses.add(address);
+			}
 		}
 		//otherwise, add each address to the addresses collection
 		else{
