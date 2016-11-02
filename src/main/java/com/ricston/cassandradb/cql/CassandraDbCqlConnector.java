@@ -12,6 +12,7 @@ package com.ricston.cassandradb.cql;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,12 +26,14 @@ import org.mule.DefaultMuleMessage;
 import org.mule.api.ConnectionException;
 import org.mule.api.MuleContext;
 import org.mule.api.MuleEvent;
+import org.mule.api.MuleException;
 import org.mule.api.annotations.Configurable;
 import org.mule.api.annotations.Connect;
 import org.mule.api.annotations.ConnectStrategy;
 import org.mule.api.annotations.ConnectionIdentifier;
 import org.mule.api.annotations.Connector;
 import org.mule.api.annotations.Disconnect;
+import org.mule.api.annotations.Paged;
 import org.mule.api.annotations.Processor;
 import org.mule.api.annotations.ValidateConnection;
 import org.mule.api.annotations.display.Password;
@@ -38,6 +41,8 @@ import org.mule.api.annotations.param.ConnectionKey;
 import org.mule.api.annotations.param.Default;
 import org.mule.api.annotations.param.Optional;
 import org.mule.api.expression.ExpressionManager;
+import org.mule.streaming.PagingConfiguration;
+import org.mule.streaming.ProviderAwarePagingDelegate;
 import org.mule.util.CollectionUtils;
 import org.mule.util.StringUtils;
 
@@ -45,11 +50,13 @@ import com.datastax.driver.core.AuthProvider;
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.HostDistance;
+import com.datastax.driver.core.QueryOptions;
 import com.datastax.driver.core.PlainTextAuthProvider;
 import com.datastax.driver.core.PoolingOptions;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.Session;
 import com.ricston.cassandradb.cql.exception.InvalidTypeException;
 
@@ -77,6 +84,13 @@ public class CassandraDbCqlConnector {
 	@Default(value = "9042")
 	private Integer port;
 	
+	/**
+	 * Fetch size for streaming select
+	 */
+	@Configurable
+	@Default(value = "5000")
+	private Integer fetchSize;
+
 	@Configurable
 	@Optional
 	private List<ContractPointConfiguration> contactPoints;
@@ -164,7 +178,8 @@ public class CassandraDbCqlConnector {
 		
 		//create cluster connection builder 
 		Cluster.Builder builder = Cluster.builder().addContactPointsWithPorts(addresses)
-				.withPoolingOptions(poolingOptions);
+				.withPoolingOptions(poolingOptions)
+				.withQueryOptions(new QueryOptions().setFetchSize(fetchSize));
 
 		//configure credentials
 		if (StringUtils.isNotBlank(password)) {
@@ -222,7 +237,6 @@ public class CassandraDbCqlConnector {
 	 *             if bulk mode is on, payload has to be collection
 	 */
 	@Processor
-	@Inject
 	public void update(String cql, @Optional List<String> params,
 			@Default(value = "false") boolean bulkMode, MuleEvent event)
 			throws InvalidTypeException {
@@ -236,7 +250,9 @@ public class CassandraDbCqlConnector {
 			}
 		}
 
-		cassandraDoExecute(cql, params, bulkMode, event);
+		Session session = getSession();
+		session.execute(getStatement(cql, params, bulkMode, event));
+		session.close();
 	}
 
 	/**
@@ -255,27 +271,86 @@ public class CassandraDbCqlConnector {
 	 *         in the map represents a column
 	 */
 	@Processor
-	@Inject
 	public List<Map<String, Object>> select(String cql,
 			@Optional List<String> params, MuleEvent event) {
-		return cassandraDoExecute(cql, params, false, event);
+
+		Session session = getSession();
+		ResultSet resultSet = session.execute(getStatement(cql, params, false, event));
+		List<Map<String, Object>> maps = Utils.toMaps(resultSet.all());
+		session.close();
+		return maps;
 	}
 
 	/**
-	 * Evaluates the parameter expressions and executes a cql statement
-	 * 
+	 * Performs a select statement on Cassandra and returns rows in
+	 * chunks via the callback interface
+	 *
+	 * {@sample.xml ../../../doc/CassandraDbCql-connector.xml.sample
+	 * cassandradbcql:select}
+	 *
+	 * @param pagingConfiguration
+	 *            The source of fetch size
 	 * @param cql
 	 *            The CQL statement to execute
 	 * @param params
 	 *            The Mule parameters, can be expressions without the #[]
-	 * @param bulkMode
-	 *            Marks if we need to execute a batch, or a single statement
 	 * @param event
 	 *            The current Mule Event
-	 * @return List of Maps with results, each map represents a row, each entry
-	 *         in the map represents a column
+	 * @return Delegate that can be called for pages of results
 	 */
-	public List<Map<String, Object>> cassandraDoExecute(String cql,
+	@Processor
+	@Paged
+	public ProviderAwarePagingDelegate<Map<String, Object>, CassandraDbCqlConnector> selectStreaming(
+	        final PagingConfiguration pagingConfiguration, String cql, @Optional List<String> params, MuleEvent event) {
+
+		final Session session = getSession();
+		final ResultSet resultSet = session.execute(getStatement(cql, params, false, event));
+		final Iterator<Row> iterator = resultSet.iterator();
+
+		return new ProviderAwarePagingDelegate<Map<String, Object>, CassandraDbCqlConnector>() {
+			ArrayList<Row> list = new ArrayList<Row>();
+
+			@Override
+			public List<Map<String, Object>> getPage(CassandraDbCqlConnector provider) throws Exception {
+				if (!iterator.hasNext()) {
+					// null indicates the end of data
+					return null;
+				}
+
+				list.clear();
+
+				// always get one, even if it triggers a fetch
+				list.add(iterator.next());
+
+				// load as many as we can without causing a fetch
+				int getCount = Math.min(pagingConfiguration.getFetchSize() - 1, resultSet.getAvailableWithoutFetching());
+				for (int i = 0; i < getCount; i++) {
+					list.add(iterator.next());
+				}
+
+				// if the next call to getPage would trigger a fetch, force that fetch now
+				if (resultSet.getAvailableWithoutFetching() < pagingConfiguration.getFetchSize()
+						&& !resultSet.isFullyFetched()) {
+					resultSet.fetchMoreResults();
+				}
+
+				return Utils.toMaps(list);
+			}
+
+			@Override
+			public int getTotalResults(CassandraDbCqlConnector provider) throws Exception {
+				// -1 means we don't know how many pages
+				return -1;
+			}
+
+			@Override
+			public void close() throws MuleException {
+				session.close();
+			}
+		};
+	}
+
+	private Statement getStatement(String cql,
 			List<String> params, boolean bulkMode, MuleEvent event) {
 
 		// get mule context and expression manager
@@ -324,48 +399,11 @@ public class CassandraDbCqlConnector {
 			}
 		}
 
-		// execute the statement using the evaluated parameters
-		List<Row> result = cassandraExecuteStatement(cql, evaluatedParameters,
-				batchSize);
-
-		// convert result to list of maps and return
-		return Utils.toMaps(result);
-	}
-
-	/**
-	 * Execute a Cassandra CQL statement with the given parameters
-	 * 
-	 * @param cql
-	 *            The CQL statement
-	 * @param parameters
-	 *            The evaluated parameters
-	 * @param batchSize
-	 *            The size of the batch
-	 * @return List of Cassandra Rows
-	 */
-	public List<Row> cassandraExecuteStatement(String cql,
-			List<Object> parameters, int batchSize) {
-
 		logger.debug("Executing statement: " + cql);
 
 		// get session and prepared statement
 		Session session = getSession();
-		PreparedStatement statement = getPreparedStatement(cql, batchSize,
-				session);
-
-		// bind the parameters
-		BoundStatement boundStatement = new BoundStatement(statement);
-		boundStatement = boundStatement.bind(parameters.toArray());
-
-		// execute statement
-		ResultSet resultSet = session.execute(boundStatement);
-
-		// read all results
-		List<Row> rowList = resultSet.all();
-
-		// close session and return
-		session.close();
-		return rowList;
+		return getBoundStatement(getPreparedStatement(cql, batchSize, session), evaluatedParameters);
 	}
 
 	/**
@@ -406,6 +444,13 @@ public class CassandraDbCqlConnector {
 		}
 
 		return statement;
+	}
+
+	private BoundStatement getBoundStatement(PreparedStatement statement, List<Object> parameters)
+	{
+		// bind the parameters
+		BoundStatement boundStatement = new BoundStatement(statement);
+		return boundStatement.bind(parameters.toArray());
 	}
 
 	/**
@@ -470,6 +515,22 @@ public class CassandraDbCqlConnector {
 
 	/**
 	 * 
+	 * @return
+	 */
+	public Integer getFetchSize() {
+		return fetchSize;
+	}
+
+	/**
+	 *
+	 * @param fetchSize
+	 */
+	public void setFetchSize(Integer fetchSize) {
+		this.fetchSize = fetchSize;
+	}
+
+	/**
+	 *
 	 * @return
 	 */
 	public String getKeyspace() {
