@@ -104,6 +104,8 @@ public class CassandraDbCqlConnector {
 
 	private Cluster cluster;
 
+	private Session session;
+
 	protected static Log logger = LogFactory
 			.getLog(CassandraDbCqlConnector.class);
 
@@ -193,6 +195,15 @@ public class CassandraDbCqlConnector {
 		// build cluster and log information
 		cluster = builder.build();
 		Utils.logClusterInformation(cluster);
+
+		// if keyspace is not set, get a general session
+		if (StringUtils.isBlank(keyspace)) {
+			session = cluster.connect();
+		}
+		else {
+			// if keyspace is set, get a session for that keyspace
+			session = cluster.connect(keyspace);
+		}
 	}
 
 	/**
@@ -201,6 +212,7 @@ public class CassandraDbCqlConnector {
 	@Disconnect
 	public void disconnect() {
 		logger.info("Closing cluster " + cluster.getClusterName());
+		session.close();
 		cluster.close();
 	}
 
@@ -252,9 +264,7 @@ public class CassandraDbCqlConnector {
 			}
 		}
 
-		Session session = getSession();
 		session.execute(getStatement(cql, params, bulkMode, event));
-		session.close();
 	}
 
 	/**
@@ -276,10 +286,8 @@ public class CassandraDbCqlConnector {
 	public List<Map<String, Object>> select(String cql,
 			@Optional List<String> params, MuleEvent event) {
 
-		Session session = getSession();
 		ResultSet resultSet = session.execute(getIdempotentStatement(cql, params, event));
 		List<Map<String, Object>> maps = Utils.toMaps(resultSet.all());
-		session.close();
 		return maps;
 	}
 
@@ -305,7 +313,6 @@ public class CassandraDbCqlConnector {
 	public ProviderAwarePagingDelegate<Map<String, Object>, CassandraDbCqlConnector> selectStreaming(
 	        final PagingConfiguration pagingConfiguration, String cql, @Optional List<String> params, MuleEvent event) {
 
-		final Session session = getSession();
 		final ResultSet resultSet = session.execute(getIdempotentStatement(cql, params, event));
 		final Iterator<Row> iterator = resultSet.iterator();
 
@@ -347,7 +354,7 @@ public class CassandraDbCqlConnector {
 
 			@Override
 			public void close() throws MuleException {
-				session.close();
+				// no-op
 			}
 		};
 	}
@@ -407,25 +414,8 @@ public class CassandraDbCqlConnector {
 
 		logger.debug("Executing statement: " + cql);
 
-		// get session and prepared statement
-		Session session = getSession();
-		return getBoundStatement(getPreparedStatement(cql, batchSize, session), evaluatedParameters);
-	}
-
-	/**
-	 * Get Cassandra session
-	 * 
-	 * @return Cassandra Session
-	 */
-	protected Session getSession() {
-
-		// if keyspace is not set, get a general session
-		if (StringUtils.isBlank(keyspace)) {
-			return cluster.connect();
-		}
-
-		// if keyspace is set, get a session for that keyspace
-		return cluster.connect(keyspace);
+		// get prepared statement
+		return getBoundStatement(getPreparedStatement(cql, batchSize), evaluatedParameters);
 	}
 
 	/**
@@ -434,11 +424,9 @@ public class CassandraDbCqlConnector {
 	 * 
 	 * @param cql
 	 * @param batchSize
-	 * @param session
 	 * @return
 	 */
-	protected PreparedStatement getPreparedStatement(String cql, int batchSize,
-			Session session) {
+	protected PreparedStatement getPreparedStatement(String cql, int batchSize) {
 
 		PreparedStatementKey key = new PreparedStatementKey(cql, batchSize);
 		PreparedStatement statement = preparedStatements.get(key);
